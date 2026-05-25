@@ -433,12 +433,22 @@ function normalizeState(raw) {
   try {
     raw = raw || {};
     raw.players  = toArr(raw.players);
-    raw.courses  = toArr(raw.courses);
+    raw.courses  = toArr(raw.courses).map(c => { if (c.holes) c.holes = toArr(c.holes); return c; });
     raw.games    = toArr(raw.games);
     raw.config   = raw.config || { ghinProxyUrl: '', writeKey: null };
     if (!raw.config.writeKey) raw.config.writeKey = null;
     raw.settings = raw.settings || { strokeOffBest: false };
     raw.activeGame = raw.activeGame || null;
+    // Normalize activeGame internals that Firebase may corrupt
+    if (raw.activeGame) {
+      const g = raw.activeGame;
+      // segs: array of arrays — Firebase converts to {"0":[...],...} and inner arrays too
+      if (g.segs) g.segs = toArr(g.segs).map(seg => toArr(seg));
+      // matches (walkoff): array of match objects
+      if (g.matches) g.matches = toArr(g.matches);
+      // scores: {pid: {holeNum: score}} — values are objects, leave as-is
+      // chs/rawChs: {pid: number} — plain objects, fine
+    }
     return raw;
   } catch(e) {
     console.error('normalizeState failed:', e);
