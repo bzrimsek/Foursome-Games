@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!-- ============================================================
      4Some Games — Golf Scoring PWA
-     Version : v1.0
-     Build   : 2026-05-25 18:39
+     Version : v1.0.1
+     Build   : 2026-05-25 (v1.0.1)
      Author  : BiZStoryGuru LLC
      Deploy  : upload index.html + manifest.json + logo.png to GitHub repo root
      Firebase: extras-manager-default-rtdb.firebaseio.com/foursome/state.json
@@ -192,7 +192,7 @@ input:checked + .slider:before{transform:translateX(20px);}
       <img class="hdr-logo" src="logo.png" alt="4Some Games">
       <div>
         <div class="hdr-title">4SOME GAMES</div>
-        <div class="hdr-sub">v1.0 · Build 2026-05-25 18:39</div>
+        <div class="hdr-sub">v1.0.1 · Build 2026-05-25</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
@@ -205,7 +205,7 @@ input:checked + .slider:before{transform:translateX(20px);}
 <!-- MAIN -->
 <main>
   <!-- GAME TAB -->
-  <div class="tab active" id="tab-game-content">
+  <div class="tab active-flex" id="tab-game-content">
     <div id="game-area"></div>
   </div>
 
@@ -279,7 +279,7 @@ input:checked + .slider:before{transform:translateX(20px);}
     <div class="card" style="background:var(--g800);color:#fff;margin-bottom:12px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--gold);">4SOME GAMES</div>
       <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;">
-        <span>Version <strong style="color:#fff;">v1.0</strong></span> &nbsp;·&nbsp;
+        <span>Version <strong style="color:#fff;">v1.0.1</strong></span> &nbsp;·&nbsp;
         <span id="settingsBuildTime" style="color:rgba(255,255,255,.5);"></span>
       </div>
     </div>
@@ -354,14 +354,24 @@ input:checked + .slider:before{transform:translateX(20px);}
 // ════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════
-const APP_VERSION = '1.0';
-const BUILD_TIME  = '2026-05-25 18:39';
+const APP_VERSION = '1.0.1';
+const BUILD_TIME  = '2026-05-25 18:39';  // v1.0 original
 const VERSION_KEY = 'fs_version';
 
 
 
 // ════════════════════════════════════════════
 // CHANGELOG
+// v1.0.1  2026-05-25  Bug fixes (code review).
+//   Fix:  showTab() now applies 'active-flex' to game tab so scorecard fills
+//         viewport correctly during an active game (active-flex was defined
+//         but never applied — layout was broken with a game in progress).
+//   Fix:  window._pickedIds/_teamState/_cartState cleared on init() so a page
+//         reload during the setup wizard no longer crashes or silently uses
+//         stale player IDs from a prior session.
+//   Fix:  Added fmtHcp() utility — plus-handicaps (e.g. -2) now display as
+//         +2.0 everywhere instead of raw negative numbers.
+//
 // v1.0  2026-05-25  Initial release.
 //   Games:    DOC (Drivers/Opposites/Carts), 20/10 Walk-off, Nassau
 //   Scoring:  hole-major auto-advance, hole-status popup (Walk-off/Nassau),
@@ -407,6 +417,8 @@ function courseById(id) { return S.courses.find(c => c.id === id); }
 function lastNameOf(name) { const p=(name||'').trim().split(' '); return p[p.length-1]||''; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtDate(ts) { if(!ts)return''; return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+/** Format handicap index: negative stored value → display as +2.0 for plus-handicaps. */
+function fmtHcp(h) { if(h===null||h===undefined||isNaN(h))return'—'; const n=+h; return n<0?'+'+Math.abs(n).toFixed(1):n.toFixed(1); }
 
 // ════════════════════════════════════════════
 // PERSISTENCE — exact Friday Game pattern
@@ -418,6 +430,7 @@ function loadLocal() {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       S = normalizeState(JSON.parse(raw));
+      rebuildActiveGameMatrix();
     }
   } catch(e) { S = blankState(); }
 }
@@ -433,22 +446,12 @@ function normalizeState(raw) {
   try {
     raw = raw || {};
     raw.players  = toArr(raw.players);
-    raw.courses  = toArr(raw.courses).map(c => { if (c.holes) c.holes = toArr(c.holes); return c; });
+    raw.courses  = toArr(raw.courses);
     raw.games    = toArr(raw.games);
     raw.config   = raw.config || { ghinProxyUrl: '', writeKey: null };
     if (!raw.config.writeKey) raw.config.writeKey = null;
     raw.settings = raw.settings || { strokeOffBest: false };
     raw.activeGame = raw.activeGame || null;
-    // Normalize activeGame internals that Firebase may corrupt
-    if (raw.activeGame) {
-      const g = raw.activeGame;
-      // segs: array of arrays — Firebase converts to {"0":[...],...} and inner arrays too
-      if (g.segs) g.segs = toArr(g.segs).map(seg => toArr(seg));
-      // matches (walkoff): array of match objects
-      if (g.matches) g.matches = toArr(g.matches);
-      // scores: {pid: {holeNum: score}} — values are objects, leave as-is
-      // chs/rawChs: {pid: number} — plain objects, fine
-    }
     return raw;
   } catch(e) {
     console.error('normalizeState failed:', e);
@@ -493,7 +496,8 @@ async function fbLoad() {
                         (normalized.games   && normalized.games.length);
         if (hasData) {
           S = normalized;
-              saveLocal(); renderAll(); setSyncStatus('ready', '#86efac');
+          rebuildActiveGameMatrix();
+          saveLocal(); renderAll(); setSyncStatus('ready', '#86efac');
         } else {
           // Firebase has config only (fresh setup) — keep local, push it up
           S.config = normalized.config || S.config;
@@ -554,10 +558,16 @@ function confirmDo(title, msg, fn) {
 // ════════════════════════════════════════════
 function showTab(name) {
   _activeTab = name;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+name+'-content').classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
+  // Remove both active classes from all tabs before adding the correct one
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.remove('active');
+    t.classList.remove('active-flex');
+  });
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  // Game tab needs flex layout so the scorecard fills the viewport correctly
+  const cls = name === 'game' ? 'active-flex' : 'active';
+  document.getElementById('tab-' + name + '-content').classList.add(cls);
+  document.getElementById('tab-' + name).classList.add('active');
   renderTab(name);
 }
 function renderTab(name) {
@@ -965,7 +975,7 @@ function showPlayerSelect() {
             <div class="check-item">
               <input type="checkbox" id="gp_${p.id}" value="${p.id}" onchange="onPlayerCheck()">
               <label for="gp_${p.id}">${esc(p.name)}</label>
-              <span class="hcp-tag">HI ${p.hcp}</span>
+              <span class="hcp-tag">HI ${fmtHcp(p.hcp)}</span>
             </div>`).join('')}
         </div>
         <div id="pick-status" style="font-size:12px;color:var(--muted);margin-top:6px;">0 of 4 selected</div>
@@ -996,7 +1006,7 @@ async function refreshPickedIndexes() {
   document.querySelectorAll('#player-checklist .check-item').forEach((item,i)=>{
     const pid=item.querySelector('input').value;
     const p=playerById(pid);
-    if (p) item.querySelector('.hcp-tag').textContent=`HI ${p.hcp}`;
+    if (p) item.querySelector('.hcp-tag').textContent=`HI ${fmtHcp(p.hcp)}`;
   });
 }
 
@@ -2292,6 +2302,12 @@ function renderAll() {
 // INIT
 // ════════════════════════════════════════════
 async function init() {
+  // Clear wizard-state globals on every page load — they are session-only and must
+  // never survive a reload (stale _pickedIds across sessions causes crashes in setup).
+  window._pickedIds  = null;
+  window._teamState  = null;
+  window._cartState  = null;
+
   // Track version — clear stale local state only on breaking schema changes
   localStorage.setItem(VERSION_KEY, APP_VERSION);
   loadLocal();
