@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- ============================================================
      4Some Games — Golf Scoring PWA
-     Version : v1.0.3
+     Version : v1.0.4
      Build   : 2026-05-25 (v1.0.1)
      Author  : BiZStoryGuru LLC
      Deploy  : upload index.html + manifest.json + logo.png to GitHub repo root
@@ -34,7 +34,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'DM Sans',sans-serif;background:var(--surf2);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
- 
+
 /* ── HEADER — same as Friday Game, max-width:480px inner ── */
 header{background:var(--g800);color:#fff;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);flex-shrink:0;}
 .hdr-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;max-width:480px;margin:0 auto;}
@@ -44,7 +44,7 @@ header{background:var(--g800);color:#fff;position:sticky;top:0;z-index:100;box-s
 .hdr-sub{font-size:11px;color:rgba(255,255,255,0.5);margin-top:1px;}
 .admin-badge{background:var(--gold);color:var(--g800);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:0.5px;display:none;}
 .admin-badge.visible{display:inline-block;}
- 
+
 /* ── NAV — same as Friday Game, max-width:480px inner ── */
 nav{background:var(--g900);display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;border-top:1px solid rgba(255,255,255,.07);padding-bottom:env(safe-area-inset-bottom);}
 .nav-inner{display:flex;max-width:480px;width:100%;margin:0 auto;}
@@ -52,17 +52,17 @@ nav button{flex:1;min-width:0;background:none;border:none;cursor:pointer;display
 nav button svg{width:21px;height:21px;stroke-width:1.8;flex-shrink:0;}
 nav button .nav-lbl{font-size:9px;letter-spacing:.3px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 nav button.active{color:var(--gold);}
- 
+
 /* ── MAIN SCROLL ── */
 main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom));max-width:480px;width:100%;margin:0 auto;overflow-y:auto;}
 .tab{display:none;padding:14px 16px 24px;}
 .tab.active-flex{display:flex;flex-direction:column;min-height:0;padding:14px 16px 24px;}
 .tab.active{display:block;}
- 
+
 /* ── CARDS ── */
 .card{background:var(--surf);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
 .card-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;color:var(--g800);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
- 
+
 /* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s;}
 .btn-primary{background:var(--g800);color:#fff;}
@@ -73,7 +73,7 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .btn-sm{padding:6px 12px;font-size:13px;}
 .btn-full{width:100%;}
 .btn:disabled{opacity:.45;cursor:not-allowed;}
- 
+
 /* ── FORM ── */
 .field{margin-bottom:12px;}
 .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
@@ -81,7 +81,7 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .field input:focus,.field select:focus{border-color:var(--gold);}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
- 
+
 /* ── ROSTER GRID — exact Friday Game pattern ── */
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .sec-title{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--g800);letter-spacing:1px;}
@@ -92,7 +92,7 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 #roster-rows .roster-row input{font-size:14px;font-family:'DM Sans',sans-serif;border:none;border-bottom:1px solid transparent;background:transparent;padding:4px 2px;width:100%;color:var(--text);}
 #roster-rows .roster-row input:focus{outline:none;border-bottom-color:var(--gold);}
 .roster-save-btn{width:100%;padding:12px;border-radius:10px;border:none;background:var(--surf3);color:var(--muted);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;margin-top:14px;}
- 
+
 /* ── COURSE / HOLE GRID ── */
 .hole-grid{display:grid;gap:3px;margin-bottom:6px;}
 .hole-cell{text-align:center;font-size:11px;padding:4px 1px;border-radius:4px;background:var(--surf2);}
@@ -101,7 +101,7 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .hole-cell input:focus{border-bottom-color:var(--gold);}
 .holes-toggle{padding:8px 18px;border-radius:8px;border:1.5px solid var(--surf3);background:var(--surf2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;}
 .holes-toggle.active{background:var(--g800);color:var(--gold);border-color:var(--g800);}
- 
+
 /* ── PLAYER CHECKLIST ── */
 .check-list{overflow-y:auto;border:1.5px solid var(--surf3);border-radius:8px;max-height:200px;}
 .check-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--surf3);cursor:pointer;}
@@ -109,18 +109,18 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .check-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;}
 .check-item label{flex:1;font-size:13px;font-weight:500;cursor:pointer;}
 .check-item .hcp-tag{font-size:11px;color:var(--muted);}
- 
+
 /* ── TEAM ASSIGN ── */
- 
+
 /* ── CART ASSIGN ── */
 .cart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
 .cart-box{background:var(--surf2);border-radius:8px;padding:10px;border:1.5px solid var(--surf3);}
 .cart-box-lbl{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--g800);margin-bottom:6px;}
- 
+
 /* ── SCORECARD TABLE ── */
 .sc-wrap{overflow-x:auto;}
 .stroke-dot::after{content:'•';color:var(--red);font-size:8px;vertical-align:super;margin-left:1px;}
- 
+
 /* ── MATCH STATUS BANNERS ── */
 .match-banner{border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
 .mb-up{background:#f0f9f0;border:1.5px solid #27ae60;}
@@ -130,7 +130,7 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .mb-lbl{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--g800);}
 .mb-sub{font-size:10px;color:var(--muted);}
 .mb-score{font-family:'Bebas Neue',sans-serif;font-size:22px;}
- 
+
 /* ── SEGMENT TABS ── */
 .seg-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .seg-tab{flex:1;padding:8px 4px;border-radius:8px;text-align:center;cursor:pointer;background:var(--surf);border:1.5px solid var(--surf3);transition:all .2s;}
@@ -139,7 +139,7 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .seg-tab.active .seg-tab-name{color:var(--gold);}
 .seg-tab-holes{font-size:10px;color:var(--muted);}
 .seg-tab.active .seg-tab-holes{color:rgba(255,255,255,.5);}
- 
+
 /* ── SETTLEMENT ── */
 .settle-table{width:100%;border-collapse:collapse;font-size:13px;}
 .settle-table td{padding:7px 6px;border-bottom:1px solid var(--surf3);}
@@ -147,21 +147,21 @@ main{flex:1;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))
 .settle-pos{color:#166534;font-weight:700;}
 .settle-neg{color:var(--red);font-weight:700;}
 .settle-txn{margin-top:10px;font-size:13px;padding:8px 10px;background:var(--surf2);border-radius:6px;}
- 
+
 /* ── PRESS BADGE ── */
 .press-badge{display:inline-block;background:var(--red);color:#fff;border-radius:4px;font-size:10px;font-weight:700;padding:1px 5px;margin-left:4px;}
- 
+
 /* ── MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surf);border-radius:14px;padding:22px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);}
 .modal h2{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--g800);margin-bottom:16px;}
 .modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;}
- 
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--g800);color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:400;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
- 
+
 /* ── MISC ── */
 .section-label{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--muted);margin:14px 0 7px;text-transform:uppercase;}
 .list-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--surf3);}
@@ -185,7 +185,7 @@ input:checked + .slider:before{transform:translateX(20px);}
 </style>
 </head>
 <body>
- 
+
 <!-- HEADER -->
 <header>
   <div class="hdr-inner">
@@ -193,7 +193,7 @@ input:checked + .slider:before{transform:translateX(20px);}
       <img class="hdr-logo" src="logo.png" alt="4Some Games">
       <div>
         <div class="hdr-title">4SOME GAMES</div>
-        <div class="hdr-sub">v1.0.3 · Build 2026-05-25</div>
+        <div class="hdr-sub">v1.0.4 · Build 2026-05-25</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
@@ -202,14 +202,14 @@ input:checked + .slider:before{transform:translateX(20px);}
     </div>
   </div>
 </header>
- 
+
 <!-- MAIN -->
 <main>
   <!-- GAME TAB -->
   <div class="tab active-flex" id="tab-game-content">
     <div id="game-area"></div>
   </div>
- 
+
   <!-- ROSTER TAB -->
   <div class="tab" id="tab-roster-content">
     <div class="sec-hdr">
@@ -233,7 +233,7 @@ input:checked + .slider:before{transform:translateX(20px);}
     <button class="roster-save-btn" id="roster-save-btn" onclick="rosterSaveChanges()">Save Changes</button>
     <div id="roster-save-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:6px;display:none;"></div>
   </div>
- 
+
   <!-- COURSES TAB -->
   <div class="tab" id="tab-courses-content">
     <div class="sec-hdr">
@@ -269,18 +269,18 @@ input:checked + .slider:before{transform:translateX(20px);}
       <input type="hidden" id="c-edit-id">
     </div>
   </div>
- 
+
   <!-- HISTORY TAB -->
   <div class="tab" id="tab-history-content">
     <div id="history-list"></div>
   </div>
- 
+
   <!-- SETTINGS TAB -->
   <div class="tab" id="tab-settings-content">
     <div class="card" style="background:var(--g800);color:#fff;margin-bottom:12px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--gold);">4SOME GAMES</div>
       <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;">
-        <span>Version <strong style="color:#fff;">v1.0.3</strong></span> &nbsp;·&nbsp;
+        <span>Version <strong style="color:#fff;">v1.0.4</strong></span> &nbsp;·&nbsp;
         <span id="settingsBuildTime" style="color:rgba(255,255,255,.5);"></span>
       </div>
     </div>
@@ -317,7 +317,7 @@ input:checked + .slider:before{transform:translateX(20px);}
     </div>
   </div>
 </main>
- 
+
 <!-- NAV -->
 <nav>
   <div class="nav-inner">
@@ -343,26 +343,33 @@ input:checked + .slider:before{transform:translateX(20px);}
     </button>
   </div>
 </nav>
- 
+
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOnBg(event)">
   <div class="modal" id="modal-box"></div>
 </div>
 <div class="toast" id="toast"></div>
- 
+
 <script>
 'use strict';
 // ════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 const BUILD_TIME  = '2026-05-25 18:39';  // v1.0 original
 const VERSION_KEY = 'fs_version';
- 
- 
- 
+
+
+
 // ════════════════════════════════════════════
 // CHANGELOG
+// v1.0.4  2026-05-25  Hotfix — Firebase sync offline.
+//   Fix:  Replaced fbLoad() conditional-write pattern with Extras Manager's
+//         read-only fbStream pattern. fbLoad was attempting a fbWrite() on
+//         every load when Firebase had no array data, causing the write rule
+//         to reject and set status to offline. Writes now only happen on
+//         explicit user actions (scheduleWrite).
+//
 // v1.0.3  2026-05-25  Hotfix — Firebase fetch blocked by missing CSP.
 //   Fix:  Added Content-Security-Policy meta tag (matches Friday Game) to
 //         allow fetch to firebaseio.com. Without it some browsers/webviews
@@ -400,13 +407,13 @@ const VERSION_KEY = 'fs_version';
 const LS_KEY = 'fs_v1';
 const FB_BASE = 'https://extras-manager-default-rtdb.firebaseio.com/foursome';
 const GHIN_DEFAULT = 'https://ghin-proxy.brianzrimsek.workers.dev';
- 
+
 let _activeTab = 'game';
 let _courseHoles = 18;
 let adminMode = false;
 let _writeTimer = null;
 let _rosterDirty = false;
- 
+
 // ════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════
@@ -421,7 +428,7 @@ function blankState() {
     settings: { strokeOffBest: false }
   };
 }
- 
+
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function isAdmin() { return adminMode; }
 function playerById(id) { return S.players.find(p => p.id === id); }
@@ -431,7 +438,7 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function fmtDate(ts) { if(!ts)return''; return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 /** Format handicap index: negative stored value → display as +2.0 for plus-handicaps. */
 function fmtHcp(h) { if(h===null||h===undefined||isNaN(h))return'—'; const n=+h; return n<0?'+'+Math.abs(n).toFixed(1):n.toFixed(1); }
- 
+
 // ════════════════════════════════════════════
 // PERSISTENCE — exact Friday Game pattern
 // writeKey lives inside state.json under config.writeKey
@@ -446,11 +453,11 @@ function loadLocal() {
     }
   } catch(e) { S = blankState(); }
 }
- 
+
 // Convert Firebase object-with-numeric-keys back to a proper JS array.
 // Firebase strips true arrays and returns {"0":x,"1":y,...} — toArr handles both.
 function toArr(v) { return v ? (Array.isArray(v) ? v : Object.values(v)) : []; }
- 
+
 // Normalize raw state from localStorage or Firebase into a clean S object.
 // Ensures all array fields are real arrays, all config defaults are present,
 // and the writeKey is never generated locally (must come from Firebase).
@@ -470,14 +477,14 @@ function normalizeState(raw) {
     return blankState();
   }
 }
- 
+
 function scheduleWrite() {
   S = normalizeState(S);
   saveLocal();
   if (_writeTimer) clearTimeout(_writeTimer);
   _writeTimer = setTimeout(() => { fbWrite(S); _writeTimer = null; }, 1500);
 }
- 
+
 async function fbWrite(data) {
   // Don't write until we have the real writeKey from Firebase
   if (!data.config || !data.config.writeKey) {
@@ -495,38 +502,31 @@ async function fbWrite(data) {
     setSyncStatus('synced', '#86efac');
   } catch(e) { setSyncStatus('offline', '#f87171'); }
 }
- 
+
 async function fbLoad() {
+  // Read-only load — same pattern as Extras Manager fbStream.
+  // Never writes from the load path; writes only happen on user actions.
   setSyncStatus('syncing…', 'var(--gold)');
   fetch(FB_BASE + '/state.json')
     .then(r => r.ok ? r.json() : null)
     .then(remote => {
       if (remote && typeof remote === 'object') {
-        const normalized = normalizeState(remote);
-        const hasData = (normalized.players && normalized.players.length) ||
-                        (normalized.courses && normalized.courses.length) ||
-                        (normalized.games   && normalized.games.length);
-        if (hasData) {
-          S = normalized;
-          saveLocal(); renderAll(); setSyncStatus('ready', '#86efac');
-        } else {
-          // Firebase has config only (fresh setup) — keep local, push it up
-          S.config = normalized.config || S.config;
-          saveLocal(); renderAll(); setSyncStatus('ready', '#86efac');
-          if (S.config.writeKey) fbWrite(S);
-        }
+        S = normalizeState(remote);
+        saveLocal();
+        renderAll();
+        setSyncStatus('ready', '#86efac');
       } else {
-        setSyncStatus('local', 'rgba(255,255,255,.4)');
+        setSyncStatus('local', 'var(--g300)');
       }
     })
     .catch(() => setSyncStatus('offline', '#f87171'));
 }
- 
+
 function setSyncStatus(msg, color) {
   const el = document.getElementById('sync-status');
   if (el) { el.textContent = '⬤ ' + msg; el.style.color = color || 'rgba(255,255,255,.4)'; }
 }
- 
+
 // ════════════════════════════════════════════
 // ADMIN
 // ════════════════════════════════════════════
@@ -539,7 +539,7 @@ function toggleAdmin() {
   renderPlayers(); renderCourses();
   toast(adminMode ? 'Admin mode ON' : 'Admin mode OFF');
 }
- 
+
 // ════════════════════════════════════════════
 // TOAST & MODAL
 // ════════════════════════════════════════════
@@ -563,7 +563,7 @@ function confirmDo(title, msg, fn) {
     <button class="btn btn-danger" onclick="closeModal();(${fn.toString()})()">Confirm</button>
   </div>`);
 }
- 
+
 // ════════════════════════════════════════════
 // TABS
 // ════════════════════════════════════════════
@@ -588,7 +588,7 @@ function renderTab(name) {
   if (name==='history') renderHistory();
   if (name==='settings') renderSettings();
 }
- 
+
 // ════════════════════════════════════════════
 // ROSTER — exact Friday Game pattern
 // ════════════════════════════════════════════
@@ -603,7 +603,7 @@ function renderPlayers() {
   if (hdr) hdr.style.gridTemplateColumns = cols;
   if (ghinHdr) ghinHdr.style.display = isAdmin() ? '' : 'none';
   if (delHdr)  delHdr.style.display  = isAdmin() ? '' : 'none';
- 
+
   const sorted = [...S.players].sort((a,b)=>lastNameOf(a.name).localeCompare(lastNameOf(b.name)));
   if (!sorted.length) {
     el.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:12px 2px;">No players yet. Tap "+ Add Player" to begin.</div>`;
@@ -632,7 +632,7 @@ function renderPlayers() {
     </div>`;
   }).join('');
 }
- 
+
 function rosterUpdateName(pid, val) {
   val = val.trim();
   if (!val) { toast('Name cannot be empty'); renderPlayers(); return; }
@@ -713,7 +713,7 @@ async function importFromExtras(league) {
     statusEl.textContent=`✓ Imported ${imported} player${imported!==1?'s':''} (${skipped} already existed).`;
   } catch(e) { statusEl.textContent='✗ Import failed: '+e.message; }
 }
- 
+
 // ════════════════════════════════════════════
 // COURSES
 // ════════════════════════════════════════════
@@ -800,7 +800,7 @@ function deleteCourse(id) {
   const c=courseById(id); if (!c) return;
   confirmDo('Delete Course',`Delete "${c.name}"?`,()=>{ S.courses=S.courses.filter(x=>x.id!==id); scheduleWrite(); renderCourses(); });
 }
- 
+
 // ════════════════════════════════════════════
 // SETTINGS
 // ════════════════════════════════════════════
@@ -827,7 +827,7 @@ async function testProxy() {
   try { const r=await fetch(`${proxy}?ghin=test`); el.textContent=r.ok?'✓ Connected':`HTTP ${r.status}`; }
   catch(e) { el.textContent='Failed'; }
 }
- 
+
 // ════════════════════════════════════════════
 // HISTORY
 // ════════════════════════════════════════════
@@ -855,7 +855,7 @@ function viewHistoryGame(id) {
 function deleteGame(id) {
   S.games=S.games.filter(g=>g.id!==id); scheduleWrite(); renderHistory(); toast('Deleted');
 }
- 
+
 // ════════════════════════════════════════════
 // HANDICAP MATH
 // ════════════════════════════════════════════
@@ -909,7 +909,7 @@ function buildStrokeMatrix(players, course, strokeOffLow) {
   // Return chs and rawChs only — matrix is no longer stored, strokes computed live
   return { chs, rawChs, minCH };
 }
- 
+
 // Live stroke lookup — replaces stored strokeMatrix entirely.
 // Called during render with the current game, player id, and hole object.
 // ch = g.chs[pid] already accounts for strokeOffLow adjustment.
@@ -919,7 +919,7 @@ function getStrokes(g, pid, hole) {
   if (!course) return 0;
   return strokesOnHole(ch, hole.hcp, course.holes.length);
 }
- 
+
 // GHIN refresh for selected players at game start
 async function refreshSelectedIndexes(selectedIds) {
   const proxy=S.config.ghinProxyUrl||GHIN_DEFAULT;
@@ -937,7 +937,7 @@ async function refreshSelectedIndexes(selectedIds) {
     if (updated>0) { scheduleWrite(); toast(`✓ Refreshed ${updated} HI`); }
   } catch(e) { toast('GHIN refresh failed'); }
 }
- 
+
 // ════════════════════════════════════════════
 // GAME TAB — NEW WORKFLOW:
 // Step 1: Select 4 Players + Refresh HI
@@ -957,7 +957,7 @@ function renderGameTab() {
   // Step 1: Pick players
   showPlayerSelect();
 }
- 
+
 function showPlayerSelect() {
   if (!S.players.length) {
     document.getElementById('game-area').innerHTML=`<div class="card" style="text-align:center;padding:32px;">
@@ -997,7 +997,7 @@ function showPlayerSelect() {
       </div>
     </div>`;
 }
- 
+
 function onPlayerCheck() {
   const checked=[...document.querySelectorAll('#player-checklist input:checked')];
   const n=checked.length;
@@ -1006,7 +1006,7 @@ function onPlayerCheck() {
   // Uncheck if more than 4
   if (n>4) { const last=[...document.querySelectorAll('#player-checklist input:checked')].pop(); last.checked=false; onPlayerCheck(); }
 }
- 
+
 async function refreshPickedIndexes() {
   const ids=[...document.querySelectorAll('#player-checklist input:checked')].map(x=>x.value);
   if (!ids.length) return toast('Select players first');
@@ -1020,11 +1020,11 @@ async function refreshPickedIndexes() {
     if (p) item.querySelector('.hcp-tag').textContent=`HI ${fmtHcp(p.hcp)}`;
   });
 }
- 
+
 function getPickedPlayerIds() {
   return [...document.querySelectorAll('#player-checklist input:checked')].map(x=>x.value);
 }
- 
+
 function showGameTypePicker() {
   // Use already-captured ids if checklist DOM is gone (e.g. coming back from a setup screen)
   const fromChecklist = [...document.querySelectorAll('#player-checklist input:checked')].map(x=>x.value);
@@ -1052,7 +1052,7 @@ function showGameTypePicker() {
       <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="showPlayerSelect()">← Back</button>
     </div>`;
 }
- 
+
 function selectGameType(type) {
   document.querySelectorAll('.game-type-card').forEach(c=>c.classList.remove('selected'));
   document.querySelector(`[data-gt="${type}"]`).classList.add('selected');
@@ -1060,7 +1060,7 @@ function selectGameType(type) {
   else if (type==='walkoff') showWalkoffSetup();
   else showFBTSetup();
 }
- 
+
 // ════════════════════════════════════════════
 // SHARED SETUP HELPERS
 // ════════════════════════════════════════════
@@ -1109,7 +1109,7 @@ function assignToTeam(pid) {
   if((ts.A||[]).length<2){ts.A=[...(ts.A||[]),pid];}else if((ts.B||[]).length<2){ts.B=[...(ts.B||[]),pid];}
   refreshTeamAssign();
 }
- 
+
 // ════════════════════════════════════════════
 // DOC GAME SETUP
 // ════════════════════════════════════════════
@@ -1140,11 +1140,11 @@ function showDOCSetup() {
     </div>`;
   renderCartAssign();
 }
- 
+
 function renderCartAssign() {
   const cs=window._cartState;
   const players=window._pickedIds.map(id=>playerById(id));
- 
+
   // Build a <select> for each slot showing available players (unassigned + currently in this slot)
   const slotSelect=(cart,role)=>{
     const currentPid=cs[cart][role];
@@ -1162,7 +1162,7 @@ function renderCartAssign() {
         onchange="doCartAssign(this.value,'${cart}','${role}',this)">${opts}</select>
     </div>`;
   };
- 
+
   document.getElementById('cart-assign-container').innerHTML=`
     <div class="cart-grid">
       <div class="cart-box"><div class="cart-box-lbl">🚗 Cart 1</div>${slotSelect('cart1','driver')}${slotSelect('cart1','passenger')}</div>
@@ -1200,7 +1200,7 @@ function startDOCGame() {
   window._pickedIds.forEach(id=>{S.activeGame.scores[id]={};});
   scheduleWrite(); renderDOCGame();
 }
- 
+
 // ─── DOC GAME RENDER ───
 function docMatchDefs(g) {
   const {cart1,cart2}=g.carts;
@@ -1237,13 +1237,13 @@ function calcDOCMatch(g,segIdx,defs) {
   return{cls:'mb-down',color:var_red,leading:def.t2lbl,display:`${def.t2lbl} ${Math.abs(diff)}↑`};
 }
 const var_red='#c0392b';
- 
+
 function renderDOCGame() {
   const g=S.activeGame;
   const players=g.playerIds.map(id=>playerById(id)||{id,name:id});
   const defs=docMatchDefs(g), statuses=[0,1,2].map(i=>calcDOCMatch(g,i,defs));
   const el=document.getElementById('game-area');
- 
+
   // Match status banners (all 3, always visible)
   const banners=statuses.map((st,i)=>`
     <div class="match-banner ${st.cls}" id="doc-banner-${i}">
@@ -1251,7 +1251,7 @@ function renderDOCGame() {
         <div class="mb-sub">Holes ${g.segs[i][0].num}–${g.segs[i][g.segs[i].length-1].num}</div></div>
       <div class="mb-score" id="doc-banner-score-${i}" style="color:${st.color};">${st.display}</div>
     </div>`).join('');
- 
+
   el.innerHTML=`
     <div class="card">
       <div class="card-title">DOC<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:8px;">${esc(g.courseName)} · $${g.cost}/match</span></div>
@@ -1286,7 +1286,7 @@ function renderDOCGame() {
   // Cache score inputs for auto-advance
   cacheGameScoreInputs(el);
 }
- 
+
 function docAdjustCost(val) {
   if (!isNaN(val) && val > 0) { S.activeGame.cost=val; scheduleWrite(); renderDOCGame(); }
 }
@@ -1323,7 +1323,7 @@ function fbtToggleStrokeMode(on) {
   g.chs=chs; g.rawChs=rawChs;
   scheduleWrite(); renderFBTGame();
 }
- 
+
 // Full 18-hole (or 9-hole) scorecard split into Front/Back blocks — Friday Game style
 function renderDOCFullScorecard(g, players, defs) {
   const sc=g.scores;
@@ -1359,9 +1359,9 @@ function renderDOCFullScorecard(g, players, defs) {
     });
     return html;
   };
- 
+
   let html=renderScorecard(g, players, bottomRowsFn);
- 
+
   // Hole-winner dots for each match segment
   html+=`<div style="margin-top:10px;">`;
   defs.forEach((def,di)=>{
@@ -1381,7 +1381,7 @@ function renderDOCFullScorecard(g, players, defs) {
   html+='</div>';
   return html;
 }
- 
+
 // ════════════════════════════════════════════
 // SHARED SCORECARD RENDERER — used by all three games
 //
@@ -1406,11 +1406,11 @@ function renderScorecard(g, players, bottomRowsFn) {
   const allHoles=course.holes;
   const front=allHoles.slice(0,9);
   const back=allHoles.slice(9);
- 
+
   function section(holes, sectionLabel, totalLabel) {
     const parTotal=holes.reduce((a,h)=>a+h.par,0);
     const cols=`60px repeat(${holes.length},1fr) 36px`;
- 
+
     let html=`<div class="hole-grid" style="grid-template-columns:${cols};">
       <div class="hole-cell" style="background:var(--g800);color:rgba(255,255,255,.5);font-size:9px;font-weight:700;">${sectionLabel}</div>
       ${holes.map(h=>`<div class="hole-cell" style="background:var(--g800);color:var(--gold);font-size:10px;font-weight:700;">${h.num}</div>`).join('')}
@@ -1421,7 +1421,7 @@ function renderScorecard(g, players, bottomRowsFn) {
       ${holes.map(h=>`<div class="hole-cell par-cell">${h.par}</div>`).join('')}
       <div class="hole-cell total">${parTotal}</div>
     </div>`;
- 
+
     players.forEach((p,pi)=>{
       const rowTotal=holes.reduce((a,h)=>a+(sc[p.id]?.[h.num]??0),0);
       const hasAny=holes.some(h=>sc[p.id]?.[h.num]!=null);
@@ -1459,13 +1459,13 @@ function renderScorecard(g, players, bottomRowsFn) {
         <div class="hole-cell total" id="${totId}" style="font-size:11px;">${hasAny?rowTotal:''}</div>
       </div></div>`;
     });
- 
+
     if (bottomRowsFn) {
       html+=`<div style="border-top:2px solid var(--surf3);">${bottomRowsFn(holes,cols)}</div>`;
     }
     return html;
   }
- 
+
   let html='';
   html+=section(front, back.length?'FRONT':'HOLES', back.length?'OUT':'TOT');
   if (back.length) {
@@ -1484,11 +1484,11 @@ function renderScorecard(g, players, bottomRowsFn) {
   }
   return html;
 }
- 
+
 // Shared score handler — works for all three game types
 let _gameScoreInputCache = null;
 let _gameScoreHoleMajorIdx = null;
- 
+
 // Central score entry handler — wired to oninput on every score cell across
 // all three game types. Two rendering paths:
 //   • Partial hole (1-3 players scored): targeted DOM updates only — totals
@@ -1502,7 +1502,7 @@ function updateGameScore(input) {
   if (!g.scores[pid]) g.scores[pid]={};
   g.scores[pid][hole]=isNaN(val)||val<1?null:val;
   scheduleWrite();
- 
+
   // Capture advance index before any DOM changes
   const shouldAdvance = !isNaN(val) && val >= 1;
   let nextIdx = -1;
@@ -1510,13 +1510,13 @@ function updateGameScore(input) {
     const cur=_gameScoreHoleMajorIdx.indexOf(input);
     if (cur >= 0 && cur < _gameScoreHoleMajorIdx.length-1) nextIdx=cur+1;
   }
- 
+
   // Check if all 4 players now have a score on this hole
   const holeComplete = g.playerIds.every(id => g.scores[id]?.[hole] != null);
- 
+
   const mainEl = document.querySelector('main');
   const scrollY = mainEl ? mainEl.scrollTop : 0;
- 
+
   if (holeComplete) {
     if (g.type==='doc') {
       // DOC needs full re-render for best-ball rows and hole-winner dots
@@ -1533,7 +1533,7 @@ function updateGameScore(input) {
     updateStandingsInPlace(g);
     if (mainEl) mainEl.scrollTop = scrollY;
   }
- 
+
   if (holeComplete && g.type!=='doc') {
     // Don't move focus — user can tap next hole manually or popup auto-dismisses
   } else if (nextIdx >= 0 && _gameScoreHoleMajorIdx && nextIdx < _gameScoreHoleMajorIdx.length) {
@@ -1547,7 +1547,7 @@ function updateGameScore(input) {
     }, 30);
   }
 }
- 
+
 // ── Hole status popup — used by Walk-off and Nassau after hole completion ──
 // Displayed 200ms after the 4th score on a hole is entered. Shows current
 // match/segment status for that hole without re-rendering the scorecard
@@ -1632,7 +1632,7 @@ function updateScoreTotals(g, pid) {
     if (tEl) tEl.textContent=anyAll?tot:'';
   }
 }
- 
+
 // Update banners and settlement in-place without touching the scorecard DOM
 function updateStandingsInPlace(g) {
   if (g.type==='doc') {
@@ -1675,7 +1675,7 @@ function updateStandingsInPlace(g) {
     if (sd) sd.innerHTML=renderFBTSettlement(g);
   }
 }
- 
+
 // DOM inputs are rendered player-major (all holes for P1, then P2, etc.)
 // but we want to advance hole-major (all players on H1, then H2, etc.).
 // This groups inputs by hole number, sorts holes numerically, then flattens
@@ -1685,19 +1685,19 @@ function buildHoleMajorIndex(inputs) {
   inputs.forEach(inp=>{const h=inp.dataset.hole;if(!byHole[h])byHole[h]=[];byHole[h].push(inp);});
   return Object.keys(byHole).map(Number).sort((a,b)=>a-b).flatMap(h=>byHole[h]);
 }
- 
+
 function cacheGameScoreInputs(container) {
   _gameScoreInputCache = Array.from(container.querySelectorAll('.game-score-input'));
   _gameScoreHoleMajorIdx = buildHoleMajorIndex(_gameScoreInputCache);
 }
- 
+
 // Keep old names as aliases so nothing breaks
 function updateDocScore(input) { updateGameScore(input); }
 function setDocScore(input)    { updateGameScore(input); }
 function setWoScore(input)     { updateGameScore(input); }
 function setFBTScore(input)    { updateGameScore(input); }
- 
- 
+
+
 function renderDOCSettlement(g) {
   const defs=docMatchDefs(g), statuses=[0,1,2].map(i=>calcDOCMatch(g,i,defs)), cost=g.cost;
   const balances={}; g.playerIds.forEach(id=>{balances[id]=0;});
@@ -1719,14 +1719,14 @@ function renderDOCSettlement(g) {
     html+='</div>';}
   return html;
 }
- 
+
 function finalizeDOCGame() {
   const g=S.activeGame, defs=docMatchDefs(g), st=[0,1,2].map(i=>calcDOCMatch(g,i,defs));
   const summary=st.map((s,i)=>`${['Drv','Opp','Crt'][i]}:${s.display}`).join(' | ');
   S.games.push({...g,summary,finalDate:Date.now()});
   S.activeGame=null; scheduleWrite(); toast('Game saved!'); renderGameTab();
 }
- 
+
 // ════════════════════════════════════════════
 // 20/10 WALK-OFF SETUP
 // ════════════════════════════════════════════
@@ -1754,7 +1754,7 @@ function showWalkoffSetup() {
     </div>`;
   refreshTeamAssign();
 }
- 
+
 function startWalkoffGame() {
   const ts=window._teamState;
   if ((ts.A||[]).length!==2||(ts.B||[]).length!==2) return toast('Assign 2 players to each team');
@@ -1779,7 +1779,7 @@ function startWalkoffGame() {
   window._pickedIds.forEach(id=>{S.activeGame.scores[id]={};});
   scheduleWrite(); renderWalkoffGame();
 }
- 
+
 // Calculate the live state of a single walk-off match entry.
 // A match runs from match.startHole to the end of the course.
 // Hole winner = team with lowest best-ball net (gross - strokes); 999 = unplayed.
@@ -1827,7 +1827,7 @@ function calcOneMatch(g, match) {
   }
   return{diff,aUp,bUp,thru,holesInMatch:holes.length,remaining,isDormie,isClosed,closedOnHole,winner,label,score,cls,color};
 }
- 
+
 // Called at the top of every renderWalkoffGame(). Scans all matches for any
 // that have been mathematically closed by the scores (|diff| > remaining) but
 // not yet marked closed in state. When found: marks it closed, derives the
@@ -1858,7 +1858,7 @@ function woAutoAdvance(g) {
   });
   return changed;
 }
- 
+
 function renderWalkoffGame() {
   const g=S.activeGame;
   woAutoAdvance(g);
@@ -1870,7 +1870,7 @@ function renderWalkoffGame() {
   const tB=g.teams.B.map(id=>players.find(p=>p.id===id)?.name.split(' ')[0]).join(' & ');
   const el=document.getElementById('game-area');
   const totalHoles=course?course.holes.length:18;
- 
+
   // Build match banners
   let matchBannersHtml='';
   g.matches.forEach((m,idx)=>{
@@ -1905,7 +1905,7 @@ function renderWalkoffGame() {
         matchBannersHtml+=`<button class="btn btn-gold btn-sm" style="margin-bottom:8px;" onclick="woStartNextMatch()">▶ START MATCH 2 (H${next})</button>`;
     }
   });
- 
+
   el.innerHTML=`
     <div class="card">
       <div class="card-title">20/10 Walk-off</div>
@@ -1946,7 +1946,7 @@ function renderWalkoffGame() {
   cacheGameScoreInputs(el);
   if(pendingPress) setTimeout(()=>woPressPrompt(pendingPress.matchIdx,pendingPress.startHole,pendingPress.cost),100);
 }
- 
+
 function woPressPrompt(matchIdx, startHole, cost) {
   const pressCost=cost*2;
   openModal(`<h2>Match ${matchIdx+1} starts H${startHole}</h2>
@@ -1963,12 +1963,12 @@ function woPressFromPrompt(matchIdx, startHole, cost) {
   if(g.matches[matchIdx]) g.matches[matchIdx].cost=cost*2;
   closeModal(); scheduleWrite(); renderWalkoffGame();
 }
- 
+
 function renderWalkoffScorecard(g,players,course) {
   if (!course) return '';
   return renderScorecard(g, players, null);
 }
- 
+
 // Manual close — opens modal to confirm winner
 function woCloseMatchManual(idx) {
   const g=S.activeGame,m=g.matches[idx],st=calcOneMatch(g,m);
@@ -2030,8 +2030,8 @@ function woAddPress(idx) {
   g.matches.push({startHole:nextHole,cost:pressCost,closed:false,winner:null,closedOnHole:null,isPress:true});
   scheduleWrite(); renderWalkoffGame(); toast(`Press — M${g.matches.length} $${pressCost} from H${nextHole}`);
 }
- 
- 
+
+
 function renderWalkoffSettlement(g) {
   // Sum all closed matches; open matches use current standing
   let aTotal=0, bTotal=0;
@@ -2072,7 +2072,7 @@ function renderWalkoffSettlement(g) {
   }
   return html;
 }
- 
+
 function finalizeWalkoffGame() {
   const g=S.activeGame;
   const summary=g.matches.map((m,i)=>{
@@ -2083,7 +2083,7 @@ function finalizeWalkoffGame() {
   S.games.push({...g,summary,finalDate:Date.now()});
   S.activeGame=null; scheduleWrite(); toast('Saved!'); renderGameTab();
 }
- 
+
 // Compatibility shim for updateStandingsInPlace
 function calcWalkoffMatch(g, matchNum) {
   // Legacy shim — used by updateStandingsInPlace for in-place banner updates
@@ -2093,8 +2093,8 @@ function calcWalkoffMatch(g, matchNum) {
   if(!st) return {label:'All Square',score:'All Square',thru:0,cls:'mb-pending',color:'#8a6700',diff:0};
   return {...st, display:st.score};
 }
- 
- 
+
+
 // ════════════════════════════════════════════
 // FRONT / BACK / TOTAL SETUP
 // ════════════════════════════════════════════
@@ -2124,7 +2124,7 @@ function showFBTSetup() {
     </div>`;
   refreshTeamAssign();
 }
- 
+
 function startFBTGame() {
   const ts=window._teamState;
   if ((ts.A||[]).length!==2||(ts.B||[]).length!==2) return toast('Assign 2 players to each team');
@@ -2149,7 +2149,7 @@ function startFBTGame() {
   window._pickedIds.forEach(id=>{S.activeGame.scores[id]={};});
   scheduleWrite(); renderFBTGame();
 }
- 
+
 // Score a Nassau segment (front 9, back 9, or all 18).
 // Each hole: team best-ball net. Whichever team has fewer total strokes wins.
 // winner='A'|'B'|'tie'|null (null = segment not yet complete).
@@ -2165,7 +2165,7 @@ function calcFBTSeg(g,holes) {
   if(!played)return{aT:null,bT:null,winner:null,played:0};
   return{aT,bT,winner:aT<bT?'A':aT>bT?'B':'tie',played};
 }
- 
+
 function renderFBTGame() {
   const g=S.activeGame;
   const players=g.playerIds.map(id=>playerById(id)||{id,name:id});
@@ -2229,7 +2229,7 @@ function renderFBTGame() {
     </div>`;
   cacheGameScoreInputs(el);
 }
- 
+
 function renderFBTScorecard(g,players,course) {
   const sc=g.scores;
   // Bottom rows: team A and team B best ball net totals per section
@@ -2262,9 +2262,9 @@ function renderFBTScorecard(g,players,course) {
   };
   return renderScorecard(g, players, bottomRowsFn);
 }
- 
+
 function setFBTScore(input) { updateGameScore(input); }
- 
+
 function renderFBTSettlement(g) {
   const course=courseById(g.courseId); if (!course) return '';
   const fR=calcFBTSeg(g,course.holes.slice(0,9)),bR=calcFBTSeg(g,course.holes.slice(9)),tR=calcFBTSeg(g,course.holes);
@@ -2283,7 +2283,7 @@ function renderFBTSettlement(g) {
     html+=`<div class="settle-txn"><span class="settle-neg">${esc(payer)}</span> pays <span class="settle-pos">${esc(payee)}</span> \$${amt}</div>`;}
   return html;
 }
- 
+
 function finalizeFBTGame() {
   const g=S.activeGame,course=courseById(g.courseId);
   const fR=calcFBTSeg(g,course.holes.slice(0,9)),bR=calcFBTSeg(g,course.holes.slice(9)),tR=calcFBTSeg(g,course.holes);
@@ -2291,7 +2291,7 @@ function finalizeFBTGame() {
   S.games.push({...g,summary:[w(fR,'F',g.costF),w(bR,'B',g.costB),w(tR,'T',g.costT)].join(' '),finalDate:Date.now()});
   S.activeGame=null; scheduleWrite(); toast('Saved!'); renderGameTab();
 }
- 
+
 // ════════════════════════════════════════════
 // SHARED
 // ════════════════════════════════════════════
@@ -2300,7 +2300,7 @@ function abandonGame() {
     S.activeGame=null; scheduleWrite(); renderGameTab(); toast('Game abandoned');
   });
 }
- 
+
 function renderAll() {
   renderGameTab();
   if (_activeTab==='roster') renderPlayers();
@@ -2308,7 +2308,7 @@ function renderAll() {
   if (_activeTab==='history') renderHistory();
   if (_activeTab==='settings') renderSettings();
 }
- 
+
 // ════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════
@@ -2318,7 +2318,7 @@ async function init() {
   window._pickedIds  = null;
   window._teamState  = null;
   window._cartState  = null;
- 
+
   // Track version — clear stale local state only on breaking schema changes
   localStorage.setItem(VERSION_KEY, APP_VERSION);
   loadLocal();
@@ -2328,9 +2328,8 @@ async function init() {
     if (document.visibilityState === 'visible') fbLoad().then(() => renderAll());
   });
 }
- 
+
 init();
 </script>
 </body>
 </html>
- 
