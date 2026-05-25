@@ -418,7 +418,6 @@ function loadLocal() {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       S = normalizeState(JSON.parse(raw));
-      rebuildActiveGameMatrix();
     }
   } catch(e) { S = blankState(); }
 }
@@ -484,8 +483,7 @@ async function fbLoad() {
                         (normalized.games   && normalized.games.length);
         if (hasData) {
           S = normalized;
-          rebuildActiveGameMatrix();
-          saveLocal(); renderAll(); setSyncStatus('ready', '#86efac');
+              saveLocal(); renderAll(); setSyncStatus('ready', '#86efac');
         } else {
           // Firebase has config only (fresh setup) — keep local, push it up
           S.config = normalized.config || S.config;
