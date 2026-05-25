@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- ============================================================
      4Some Games — Golf Scoring PWA
-     Version : v1.0.9
+     Version : v1.1.0
      Build   : 2026-05-25 (v1.0.1)
      Author  : BiZStoryGuru LLC
      Deploy  : upload index.html + manifest.json + logo.png to GitHub repo root
@@ -32,7 +32,7 @@
   --radius:10px; --shadow:0 2px 12px rgba(0,0,0,0.12);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:'DM Sans',sans-serif;background:var(--surf2);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--surf2);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;padding-top:env(safe-area-inset-top);}
 
 /* ── HEADER — same as Friday Game, max-width:480px inner ── */
 header{background:var(--g800);color:#fff;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);flex-shrink:0;}
@@ -192,7 +192,7 @@ input:checked + .slider:before{transform:translateX(20px);}
       <img class="hdr-logo" src="logo.png" alt="4Some Games">
       <div>
         <div class="hdr-title">4SOME GAMES</div>
-        <div class="hdr-sub">v1.0.9 · Build 2026-05-25</div>
+        <div class="hdr-sub">v1.1.0 · Build 2026-05-25</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
@@ -279,7 +279,7 @@ input:checked + .slider:before{transform:translateX(20px);}
     <div class="card" style="background:var(--g800);color:#fff;margin-bottom:12px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--gold);">4SOME GAMES</div>
       <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;">
-        <span>Version <strong style="color:#fff;">v1.0.9</strong></span> &nbsp;·&nbsp;
+        <span>Version <strong style="color:#fff;">v1.1.0</strong></span> &nbsp;·&nbsp;
         <span id="settingsBuildTime" style="color:rgba(255,255,255,.5);"></span>
       </div>
     </div>
@@ -354,7 +354,7 @@ input:checked + .slider:before{transform:translateX(20px);}
 // ════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.1.0';
 const BUILD_TIME  = '2026-05-25 18:39';  // v1.0 original
 const VERSION_KEY = 'fs_version';
 
@@ -428,7 +428,7 @@ function blankState() {
   };
 }
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function uid() { return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function isAdmin() { return adminMode; }
 function playerById(id) { return S.players.find(p => p.id === id); }
 function courseById(id) { return S.courses.find(c => c.id === id); }
