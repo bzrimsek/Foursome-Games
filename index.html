@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- ============================================================
      4Some Games — Golf Scoring PWA
-     Version : v1.0.5
+     Version : v1.0.6
      Build   : 2026-05-25 (v1.0.1)
      Author  : BiZStoryGuru LLC
      Deploy  : upload index.html + manifest.json + logo.png to GitHub repo root
@@ -193,7 +193,7 @@ input:checked + .slider:before{transform:translateX(20px);}
       <img class="hdr-logo" src="logo.png" alt="4Some Games">
       <div>
         <div class="hdr-title">4SOME GAMES</div>
-        <div class="hdr-sub">v1.0.5 · Build 2026-05-25</div>
+        <div class="hdr-sub">v1.0.6 · Build 2026-05-25</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
@@ -280,7 +280,7 @@ input:checked + .slider:before{transform:translateX(20px);}
     <div class="card" style="background:var(--g800);color:#fff;margin-bottom:12px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--gold);">4SOME GAMES</div>
       <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;">
-        <span>Version <strong style="color:#fff;">v1.0.5</strong></span> &nbsp;·&nbsp;
+        <span>Version <strong style="color:#fff;">v1.0.6</strong></span> &nbsp;·&nbsp;
         <span id="settingsBuildTime" style="color:rgba(255,255,255,.5);"></span>
       </div>
     </div>
@@ -355,7 +355,7 @@ input:checked + .slider:before{transform:translateX(20px);}
 // ════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 const BUILD_TIME  = '2026-05-25 18:39';  // v1.0 original
 const VERSION_KEY = 'fs_version';
 
@@ -504,14 +504,25 @@ async function fbWrite(data) {
 }
 
 async function fbLoad() {
-  // Read-only load — same pattern as Extras Manager fbStream.
-  // Never writes from the load path; writes only happen on user actions.
+  // Only replace local state if Firebase has real data (players or courses).
+  // If Firebase only has config, pull the writeKey but keep local data intact.
+  // This prevents an empty Firebase from wiping a populated localStorage.
   setSyncStatus('syncing…', 'var(--gold)');
   fetch(FB_BASE + '/state.json')
-    .then(r => { if(!r.ok){setSyncStatus('HTTP '+r.status,'#f87171');return null;} return r.json(); })
+    .then(r => r.ok ? r.json() : null)
     .then(remote => {
       if (remote && typeof remote === 'object') {
-        S = normalizeState(remote);
+        const normalized = normalizeState(remote);
+        const hasRemoteData = (normalized.players && normalized.players.length) ||
+                              (normalized.courses && normalized.courses.length) ||
+                              (normalized.games   && normalized.games.length);
+        if (hasRemoteData) {
+          // Firebase has real data — use it as source of truth
+          S = normalized;
+        } else {
+          // Firebase has config only — pull writeKey, keep local data
+          S.config.writeKey = (normalized.config && normalized.config.writeKey) || S.config.writeKey;
+        }
         saveLocal();
         renderAll();
         setSyncStatus('ready', '#86efac');
