@@ -1,0 +1,24 @@
+{
+  "name": "4Some Games",
+  "short_name": "4Some",
+  "description": "Golf scoring PWA for foursome games — DOC, Walkoff, Nassau",
+  "start_url": "/foursome-games/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a2f1a",
+  "theme_color": "#1a2f1a",
+  "icons": [
+    {
+      "src": "logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
