@@ -1,0 +1,3556 @@
+<!DOCTYPE html>
+<!-- ============================================================
+     Friday Game — Golf Scoring PWA
+     Version : v11.0  Build 2026-06-03 02:05 PM ET
+     Author  : BiZStoryGuru LLC
+     Deploy  : upload index.html + sw.js + manifest.json + logo.jpg to GitHub repo root
+     SW Cache: CACHE_NAME in sw.js is updated automatically by delivery script
+     Firebase: extras-manager-default-rtdb.firebaseio.com/friday-game/state.json
+============================================================ -->
+<!--
+CHANGELOG
+// v11.0  2026-06-03  Code review: inputmode numeric on all inputs; JSDoc on undocumented fns; mid-game writes use saveLocal.
+// v10.9  2026-06-03  Remove: Home tab — Game tab is now the landing page, matching 4Some pattern.
+// v10.8  2026-06-03  Fix: home page game status removed — button goes straight to Game tab choice screen.
+// v10.7  2026-06-03  Fix: rejoinGame goes straight to scoring — no double choice screen.
+// v10.6  2026-06-03  Fix: home button label changed to GAME IN PROGRESS to avoid implying auto-rejoin.
+// v10.5  2026-06-03  Fix: _scoring reset after fbLoad so choice screen always shows on app open.
+// v10.4  2026-06-03  Add: parallel games — local-only scoring, rejoin/abandon choice on open.
+// v10.3  2026-06-03  Fix: hdr-logo CSS missing — logo now constrained to 40x40px in header.
+// v10.2  2026-06-03  Fix: header logo references logo.png not base64.
+// v10.1  2026-06-03  [describe changes here]
+// v10.0  2026-06-02  Add: persistent offline write queue — pending writes survive app close.
+// v9.9  2026-06-02  Fix: score max capped at 9; input validation; preconnect hints added.
+// v9.8  2026-06-02  Doc: added JSDoc to undocumented functions; standardized section headers.
+// v9.7  2026-06-02  Fix: friendly error messages; btn-sm touch target increased to 9px.
+// v9.6  2026-06-02  Fix: window.storage dead code removed; changelog cleaned; histModalBody guarded.
+// v9.5  2026-06-02  Fix: courses persist across preview reloads via artifact storage.
+// v9.4  2026-06-02  Fix: pasted courses not overwritten when Firebase returns empty.
+// v9.3  2026-06-02  Fix: courses restored from localStorage on Firebase failure in preview.
+// v9.2  2026-06-02  Fix: reverted controllerchange SW reload; course load fixes.
+// v9.1  2026-06-02  Fix: goPhase immediate fbWrite; results recalc on rejoin.
+// v9.0  2026-06-02  Nav buttons in card title rows; CSS flex layout overhaul;
+//   Add:  18/F/B pill picker inline with course dropdown on start + quota pages;
+//   Fix:  Select All toggles to Unselect All; player list scrolling restored.
+// v8.x  2026-06-02  Layout iteration (reverted — versions consumed in session).
+// v7.4-7.9  2026-06-02  Layout iteration (reverted — versions consumed in session).
+// v7.3  2026-06-02  Add: service worker (sw.js) for offline asset caching.
+// v7.2  2026-06-02  Fix: unguarded modal DOM writes; retry loops capped at 10; dead code removed.
+// v7.1  2026-06-02  Fix: course persistence; null guards; goBackToSetup preserves course.
+// v7.0  2026-06-02  XSS fixes; offline pre-round setup; rejoin loading guard.
+// v6.20-6.0  2026-05-27  Course persistence; skins CH; BlueGolf import; 9-hole scoring; UI polish.
+// v5.x  2026-05-27  Player list; scorecard; strokes; Play 9; home course; BlueGolf.
+// v4.0  2026-05-26  Code review: error boundary; appLog; fbWrite backoff.
+// v3.9  2026-05-26  Auto-update fixed.
+// v3.0  2026-05-25  History management; saveGame slim; esc(); offline flush.
+// v2.5  2026-05-25  Code review cycle 1.
+// v2.0  2026-05-23  Original release.
+-->
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://extras-manager-default-rtdb.firebaseio.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Friday Game">
+<meta name="theme-color" content="#1a2f1a">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://extras-manager-default-rtdb.firebaseio.com https://fonts.googleapis.com https://fonts.gstatic.com https://ghin-proxy.brianzrimsek.workers.dev; img-src 'self' data:;">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="icon" type="image/png" href="logo.png">
+<title>Friday Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g900:#0d1f0d; --g800:#1a2f1a;
+  --g700:#243824;
+  --g600:#2e472e;
+  --gold:#c9a227;
+  --gold2:#e8c04a;
+  --surf:#fff;
+  --surf2:#f4f4f2;
+  --surf3:#e8e8e5;
+  --red:#c0392b;
+  --blue:#2471a3;
+  --text:#1a1a1a;
+  --muted:#777;
+  --radius:10px;
+  --shadow:0 2px 12px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Sans',sans-serif;background:var(--surf2);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;padding-top:env(safe-area-inset-top);}
+
+header{background:var(--g800);color:#fff;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);flex-shrink:0}
+.hdr-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;max-width:480px;margin:0 auto;}
+.hdr-left{display:flex;align-items:center;gap:10px;}
+.hdr-logo{height:40px;width:40px;object-fit:contain;border-radius:6px;}
+.hdr-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--gold);}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,0.5);margin-top:1px;font-weight:500;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.admin-badge{background:var(--gold);color:var(--g800);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:0.5px;display:none;}
+.admin-badge.visible{display:inline-block;}
+
+nav{background:var(--g900);display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;border-top:1px solid rgba(255,255,255,.07);padding-bottom:env(safe-area-inset-bottom);}
+.nav-inner{display:flex;max-width:480px;width:100%;margin:0 auto;}
+nav button{flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px 13px;color:rgba(255,255,255,.4);transition:color .18s;-webkit-tap-highlight-color:transparent;}
+nav button svg{width:21px;height:21px;stroke-width:1.8;flex-shrink:0;}
+nav button .nav-lbl{font-size:9px;letter-spacing:.3px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+nav button.active{color:var(--gold);}
+
+main{flex:1;min-height:0;padding:0;max-width:480px;width:100%;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;}
+.tab{display:none;}.tab.active{display:block;overflow-y:auto;padding:14px;padding-bottom:80px;}
+#tab-game-content.active{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;padding:12px 12px 72px 12px;}
+#tab-game-content .card{margin-bottom:0;padding:12px;}
+#tab-game-content .field{margin-bottom:8px;}
+#tab-game-content .field:last-of-type{margin-bottom:0;}
+
+.card{background:var(--surf);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;color:var(--g800);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+.btn-primary{background:var(--g800);color:#fff;}
+.btn-primary:hover{background:var(--g600);}
+.btn-gold{background:var(--gold);color:var(--g800);}
+.btn-gold:hover{background:var(--gold2);}
+.btn-sm{padding:9px 14px;font-size:13px;}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-outline{background:none;border:1.5px solid var(--g800);color:var(--g800);}
+.btn-full{width:100%;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--surf3);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--surf);color:var(--text);outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:var(--gold);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+.list-item{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--surf);border-radius:8px;margin-bottom:6px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.li-main{font-weight:600;font-size:14px;}
+.li-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.li-actions{display:flex;gap:6px;flex-shrink:0;}
+.li-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--surf2);}
+.li-badge.gold{background:var(--gold);color:var(--g800);}
+.li-badge.green{background:#27ae60;color:#fff;}
+.li-badge.blue{background:var(--blue);color:#fff;}
+.li-badge.red{background:var(--red);color:#fff;}
+
+.hole-grid{display:grid;gap:2px;margin-bottom:4px;}
+.hole-cell{text-align:center;font-size:11px;padding:4px 1px;border-radius:4px;background:var(--surf2);}
+.hole-cell.header{font-weight:700;font-size:10px;color:var(--muted);background:none;}
+.hole-cell.total{font-weight:700;background:var(--g800);color:var(--gold);}
+.hole-cell.par-cell{background:var(--g800);color:var(--gold);font-size:10px;}
+
+
+.score-table{width:100%;border-collapse:collapse;font-size:12px;}
+.score-table th{background:var(--g800);color:var(--gold);padding:5px 8px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:.5px;}
+.score-table td{padding:5px 8px;text-align:center;border-bottom:1px solid var(--surf3);}
+.score-table tr:last-child td{border:none;}
+.score-table tr:nth-child(even) td{background:var(--surf2);}
+.skin-win{background:#fff9e6 !important;font-weight:700;}
+.skin-win td{color:var(--g800);}
+
+.team-card{border-radius:8px;padding:12px 14px;margin-bottom:8px;}
+.team-a{background:#e8f5e9;border-left:4px solid #27ae60;}
+.team-b{background:#e3f2fd;border-left:4px solid var(--blue);}
+.team-label{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;margin-bottom:6px;color:var(--g800);}
+.team-player{font-size:13px;font-weight:600;display:flex;justify-content:space-between;padding:3px 0;}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surf);border-radius:14px;padding:22px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);}
+.modal h2{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--g800);margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--g800);color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:400;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.section-label{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--muted);margin:14px 0 7px;text-transform:uppercase;}
+
+.check-list{overflow-y:auto;border:1.5px solid var(--surf3);border-radius:8px;}
+.check-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--surf3);cursor:pointer;}
+.check-item:last-child{border-bottom:none;}
+.check-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;}
+.check-item label{flex:1;font-size:13px;font-weight:500;cursor:pointer;}
+.check-item .hcp-tag{font-size:11px;color:var(--muted);}
+
+.pts-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.pts-row label{min-width:110px;font-size:13px;font-weight:600;}
+.pts-row input{width:60px;padding:6px 8px;border:1.5px solid var(--surf3);border-radius:6px;font-size:14px;text-align:center;font-family:'DM Sans',sans-serif;}
+
+.empty{text-align:center;padding:32px 16px;color:var(--muted);}
+.empty .empty-icon{font-size:38px;margin-bottom:10px;}
+.empty p{font-size:14px;}
+
+.score-player-block{margin-bottom:20px;border:1px solid var(--surf3);border-radius:8px;overflow:hidden;}
+.score-player-header{background:var(--g800);color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;}
+.score-player-header .spn{font-weight:700;font-size:14px;}
+.score-player-header .spi{font-size:11px;color:rgba(255,255,255,.65);}
+.score-player-body{padding:10px;}
+
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--g800);letter-spacing:1px;}
+.bottom-spacer{height:24px;}
+/* SCORECARD GRID */
+.sc-grid{border-collapse:collapse;font-size:12px;width:100%;min-width:360px;}
+.sc-grid th{background:var(--g800);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.5px;padding:5px 3px;text-align:center;border:1px solid var(--g600);}
+.sc-grid td{border:1px solid var(--surf3);padding:0;}
+.sc-grid td.row-label{background:var(--g800);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:11px;padding:5px 6px;text-align:center;white-space:nowrap;border-color:var(--g600);}
+.sc-grid td.total-cell{background:var(--surf2);font-weight:700;font-size:12px;text-align:center;padding:4px 6px;color:var(--g800);}
+.sc-grid input[type=number]{width:100%;border:none;font-size:13px;text-align:center;padding:5px 2px;font-family:'DM Sans',sans-serif;background:transparent;outline:none;color:var(--text);}
+.sc-grid input[type=number]:focus{background:var(--gold2);border-radius:2px;}
+.sc-grid tr:hover td:not(.row-label):not(.total-cell){background:#fffbe6;}
+/* hide number spinners */
+.sc-grid input[type=number]::-webkit-inner-spin-button,
+.sc-grid input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+.sc-grid input[type=number]{-moz-appearance:textfield;}
+.holes-toggle{padding:8px 18px;border-radius:8px;border:1.5px solid var(--surf3);background:var(--surf2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+.holes-toggle.active{background:var(--g800);color:var(--gold);border-color:var(--g800);}
+.switch{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;cursor:pointer;inset:0;background:var(--surf3);border-radius:24px;transition:.3s;}
+.slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s;}
+input:checked + .slider{background:var(--gold);}
+input:checked + .slider:before{transform:translateX(20px);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-inner">
+    <div class="hdr-left">
+      <img class="hdr-logo" src="logo.png" alt="Friday Game">
+      <div>
+        <div class="hdr-title">FRIDAY GAME</div>
+        <div class="hdr-sub" id="header-version"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="admin-badge" id="admin-badge">ADMIN</span>
+      <div id="sync-status" style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.5px;">⬤ local</div>
+    </div>
+  </div>
+</header>
+
+
+<main>
+
+<!-- HOME TAB -->
+<!-- GAME TAB -->
+<div class="tab active" id="tab-game-content">
+
+  <!-- Game in progress choice screen -->
+  <div id="gameChoice" style="display:none;flex:1;min-height:0;overflow-y:auto;padding-bottom:8px;"></div>
+
+  <div id="gameSetup" style="flex:1;min-height:0;overflow-y:auto;padding-bottom:8px;">
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <span style="flex:1;font-size:13px;">Start a Game</span>
+        <button class="btn btn-sm btn-outline" onclick="refreshSelectedIndexes()" style="flex-shrink:0;">⛳ Refresh</button>
+        <button class="btn btn-sm btn-gold" onclick="startGame()" style="flex-shrink:0;">START →</button>
+      </div>
+      <div>
+        <div class="field" style="flex-shrink:0;">
+          <label>Course</label>
+          <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+            <select id="gsCourse" onchange="updateFrontBackVisibility()" style="min-width:0;flex:1;"></select>
+            <div id="gsNinePicker" style="display:none;gap:4px;flex-shrink:0;">
+              <button type="button" class="holes-toggle" id="gs18" onclick="setGameNineMode('all')" style="font-size:11px;padding:4px 7px;">18</button>
+              <button type="button" class="holes-toggle" id="gsFront" onclick="setGameNineMode('front')" style="font-size:11px;padding:4px 7px;">F</button>
+              <button type="button" class="holes-toggle" id="gsBack" onclick="setGameNineMode('back')" style="font-size:11px;padding:4px 7px;">B</button>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span>Players</span>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 10px;" onclick="selectRegularsOnly()">★ Regulars</button>
+              <button type="button" id="btnSelectAll" class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 10px;" onclick="toggleSelectAll()">Select All</button>
+            </div>
+          </label>
+          <div class="check-list" id="gsPlayerList" style="height:340px;overflow-y:auto;border:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameActive" style="display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden;">
+
+    <!-- PHASE 1: Quota -->
+    <div class="card" id="gameInfoCard" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+      <div class="card-title" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm btn-outline" onclick="goBackToSetup()" style="flex-shrink:0;">← Players</button>
+        <span id="gInfoTitle" style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Quotas</span>
+        <button class="btn btn-sm btn-gold" onclick="goPhase('groups')" style="flex-shrink:0;">Groups →</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmEndGame()" style="flex-shrink:0;">END</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-shrink:0;min-width:0;">
+        <select id="gameCourseSelect" style="min-width:0;flex:1;padding:6px 8px;border:1.5px solid var(--surf3);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surf);color:var(--text);" onchange="onGameCourseChange(this)"></select>
+        <div id="gameNinePicker" style="display:none;gap:4px;flex-shrink:0;">
+          <button class="holes-toggle" id="gn18" onclick="setActiveGameNine('all')" style="font-size:11px;padding:4px 7px;">18</button>
+          <button class="holes-toggle" id="gnFront" onclick="setActiveGameNine('front')" style="font-size:11px;padding:4px 7px;">F</button>
+          <button class="holes-toggle" id="gnBack" onclick="setActiveGameNine('back')" style="font-size:11px;padding:4px 7px;">B</button>
+        </div>
+      </div>
+      <div id="gInfoBody" style="flex:1;min-height:0;overflow-y:auto;"></div>
+    </div>
+
+    <!-- PHASE 2: Playing Groups -->
+    <div class="card" id="groupsCard" style="display:none;flex-direction:column;overflow:hidden;flex:1;min-height:0;">
+      <div class="card-title" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm btn-outline" onclick="goPhase('targets')" style="flex-shrink:0;">← Quotas</button>
+        <span style="flex:1;font-size:13px;">Playing Groups</span>
+        <button class="btn btn-sm btn-outline" onclick="addGroup()" style="flex-shrink:0;">+</button>
+        <button class="btn btn-sm btn-outline" onclick="removeLastGroup()" style="flex-shrink:0;">−</button>
+        <button class="btn btn-sm btn-gold" onclick="goPhase('scores')" style="flex-shrink:0;">Scores →</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmEndGame()" style="flex-shrink:0;">END</button>
+      </div>
+      <div id="groupTabsRow" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0;"></div>
+      <div id="groupsBody" style="flex:1;min-height:0;overflow-y:auto;"></div>
+    </div>
+
+    <!-- PHASE 3: Score Entry -->
+    <div class="card" id="scoreCard" style="display:none;flex-direction:column;overflow:hidden;flex:1;min-height:0;">
+      <div class="card-title" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm btn-outline" onclick="goPhase('groups')" style="flex-shrink:0;">← Groups</button>
+        <span style="flex:1;font-size:13px;">Score Entry</span>
+        <button class="btn btn-sm btn-gold" onclick="goPhase('results')" style="flex-shrink:0;">Results →</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmEndGame()" style="flex-shrink:0;">END</button>
+      </div>
+      <div id="scoreEntryBody" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;"></div>
+    </div>
+
+    <!-- PHASE 4: Results -->
+    <div class="card" id="resultsCard" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+      <div class="card-title" style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm btn-outline" onclick="goPhase('scores')" style="flex-shrink:0;">← Scores</button>
+        <span style="flex:1;font-size:13px;">Results</span>
+        <button class="btn btn-sm btn-gold" onclick="saveGame()" style="flex-shrink:0;">💾 Save</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmEndGame()" style="flex-shrink:0;">END</button>
+      </div>
+      <div id="resultsBody" style="overflow-y:auto;flex:1;min-height:0;"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- COURSES TAB -->
+<div class="tab" id="tab-courses-content">
+  <div class="sec-hdr">
+    <div class="sec-title">Courses</div>
+  </div>
+  <div id="courseList"></div>
+  <div style="margin-top:4px;margin-bottom:12px;">
+    <button class="btn btn-gold" onclick="openCourseModal()">+ Add Course</button>
+  </div>
+</div>
+
+<!-- PLAYERS TAB -->
+<div class="tab" id="tab-players-content">
+  <div class="sec-hdr">
+    <div class="sec-title">Roster</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="rosterRefreshGhin()" title="Refresh GHIN indexes">⛳</button>
+      <button class="btn btn-gold btn-sm" onclick="rosterAddRow()">+ Add Player</button>
+    </div>
+  </div>
+  <div id="roster-ghin-status" style="font-size:12px;color:var(--muted);margin-bottom:6px;display:none;"></div>
+  <div id="roster-grid">
+    <div id="roster-header-row" style="display:grid;gap:6px;padding:4px 2px;border-bottom:2px solid var(--surf3);margin-bottom:4px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;">NAME</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-align:center;">INDEX</div>
+      <div id="roster-ghin-header" style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;">GHIN #</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-align:center;">REGULAR</div>
+      <div></div>
+    </div>
+    <div id="roster-rows"></div>
+  </div>
+  <div style="margin-top:14px;">
+    <button id="roster-save-btn" onclick="rosterSaveChanges()"
+      style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--surf3);color:var(--muted);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;">
+      Save Changes
+    </button>
+  </div>
+  <div id="roster-save-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:6px;display:none;"></div>
+</div>
+
+<!-- HISTORY TAB -->
+<div class="tab" id="tab-history-content">
+  <div id="historyList"></div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="tab" id="tab-settings-content">
+  <div class="card" style="background:var(--g800);color:#fff;margin-bottom:12px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--gold);">FRIDAY GAME</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.8;">
+      <span>Version <strong style="color:#fff;">v11.0</strong></span> &nbsp;·&nbsp;
+<br><span id="settingsBuildTime" style="color:rgba(255,255,255,.7);font-size:11px;"></span><br><span id="localCoursesIndicator" style="display:none;color:#fbbf24;font-size:11px;">⚠ Using local courses (not Firebase)</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Game Setup</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:13px;font-weight:600;">Pre-check Regulars</div>
+        <div style="font-size:11px;color:var(--muted);">Automatically check regular players when starting a game</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="settingPreCheckRegulars" onchange="autoSaveGameSettings()">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Pairing Mode</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button type="button" class="holes-toggle active" id="pairModeAB" onclick="setPairMode('ab')">A/B Draw</button>
+      <button type="button" class="holes-toggle" id="pairModeRandom" onclick="setPairMode('random')">Random</button>
+    </div>
+    <div id="pairModeDesc" style="font-size:11px;color:var(--muted);">Players sorted by handicap, best half as A, weaker half as B. Each team is one A + one B.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Skins Settings</div>
+    <div class="pts-row">
+      <label style="min-width:150px;">Hcp Adjustment %</label>
+      <input type="number" id="skinsHcpAdj" value="100" min="0" max="100" step="5" style="width:70px;" onchange="autoSaveSkins()" inputmode="numeric">
+    </div>
+    <div style="margin:10px 0 4px;display:flex;align-items:center;gap:12px;">
+      <label class="toggle-label" style="font-size:13px;font-weight:600;flex:1;">
+        Use ½-Stroke for Skins
+        <div style="font-size:11px;font-weight:400;color:var(--muted);margin-top:2px;">Halves stroke allowance on each hole — prevents an adjusted par from tying a gross birdie</div>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="skinsHalfStroke" onchange="autoSaveSkins()">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div style="margin:10px 0 4px;display:flex;align-items:center;gap:12px;">
+      <label class="toggle-label" style="font-size:13px;font-weight:600;flex:1;">
+        Stroke Off Best Player
+        <div style="font-size:11px;font-weight:400;color:var(--muted);margin-top:2px;">Everyone strokes off the lowest CH in the game — each player gets the difference between their CH and the low man's CH</div>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="skinsStrokeOffBest" onchange="autoSaveSkins()">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Stableford Points</div>
+    <div class="pts-row"><label>Double Eagle</label><input type="number" id="ptsDblEagle" value="8" min="0" onchange="saveSettings()" inputmode="numeric"></div>
+    <div class="pts-row"><label>Eagle</label><input type="number" id="ptsEagle" value="4" min="0" onchange="saveSettings()" inputmode="numeric"></div>
+    <div class="pts-row"><label>Birdie</label><input type="number" id="ptsBirdie" value="2" min="0" onchange="saveSettings()" inputmode="numeric"></div>
+    <div class="pts-row"><label>Par</label><input type="number" id="ptsPar" value="1" min="0" onchange="saveSettings()" inputmode="numeric"></div>
+    <div class="pts-row"><label>Bogey</label><input type="number" id="ptsBogey" value="0" min="0" onchange="saveSettings()" inputmode="numeric"></div>
+    <div class="pts-row"><label>Double Bogey+</label><input type="number" id="ptsDbl" value="0" min="0" onchange="saveSettings()" inputmode="numeric"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Admin Mode</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:13px;font-weight:600;">Admin Mode</div>
+        <div style="font-size:11px;color:var(--muted);" id="adminModeDesc">Off — delete actions hidden</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="adminModeToggle" onchange="toggleAdmin()">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Advanced disclosure -->
+  <button onclick="toggleAdvanced()" id="advancedToggleBtn"
+    style="background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.5px;padding:8px 0;cursor:pointer;width:100%;text-align:center;">
+    ⚙ ADVANCED ▾
+  </button>
+  <div id="advancedSection" style="display:none;">
+    <div class="card">
+      <div class="card-title">GHIN Proxy</div>
+      <div class="field"><label>Proxy URL</label><input type="text" id="cfgGhinProxy" placeholder="https://ghin-proxy.brianzrimsek.workers.dev"></div>
+      <div class="field" style="align-items:center;">
+        <label>Home Course</label>
+        <div style="display:flex;align-items:center;gap:8px;flex:1;">
+          <span id="cfgHomeCourse" style="font-size:13px;color:var(--txt2);flex:1;"></span>
+          <button class="btn btn-sm btn-outline" onclick="clearHomeCourse()" id="cfgHomeCourseBtn" style="display:none;">Clear</button>
+        </div>
+      </div>
+      <div id="cfgProxyStatus" style="font-size:11px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-gold" onclick="saveConfig()">SAVE</button>
+        <button class="btn btn-outline btn-sm" onclick="testProxy()">TEST CONNECTION</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Refresh GHIN Indexes</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Fetches the latest handicap index for all players with a GHIN number.</div>
+      <div id="bulkGhinStatus" style="font-size:13px;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-gold btn-full" onclick="bulkRefreshGhin()">🔄 REFRESH ALL INDEXES</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Import from Extras Manager</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">One-time import of players from the Extras Manager roster into Friday Game.</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" style="flex:1;" onclick="importFromExtras('wed')">WED Roster</button>
+        <button class="btn btn-outline" style="flex:1;" onclick="importFromExtras('thu')">THU Roster</button>
+      </div>
+      <div id="importStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
+    </div>
+    <div class="card" id="testDataCard">
+      <div class="card-title">Load Test Data</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Paste Firebase state JSON to test without deploying. Does not write to Firebase.</div>
+      <button class="btn btn-outline btn-full" onclick="pasteJsonPrompt()">PASTE JSON STATE</button>
+    </div>
+    <div class="card" id="historyMgmtCard">
+      <div class="card-title">History Management</div>
+      <div style="font-size:12px;margin-bottom:10px;"><span id="historyCount"></span></div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>History cap (warning only)</label>
+        <input type="number" id="cfgHistoryCap" min="10" max="9999" style="width:80px;" onchange="saveHistoryCap(parseInt(this.value))" inputmode="numeric">
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Delete games before date</label>
+        <input type="date" id="cfgPurgeDate" style="flex:1;">
+      </div>
+      <button class="btn btn-danger btn-full" onclick="purgeGamesBefore()">DELETE GAMES BEFORE DATE</button>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--surf3);">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">If the home screen shows "Course data missing", use this to clear the stuck game.</div>
+        <button class="btn btn-danger btn-full" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<nav>
+  <div class="nav-inner">
+  <button onclick="showTab('game')" id="tab-game" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+    <span class="nav-lbl">Game</span>
+  </button>
+  <button onclick="showTab('courses')" id="tab-courses">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17l4-8 4 4 4-6 4 10"/><circle cx="18" cy="5" r="2"/></svg>
+    <span class="nav-lbl">Courses</span>
+  </button>
+  <button onclick="showTab('players')" id="tab-players">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+    <span class="nav-lbl">Players</span>
+  </button>
+  <button onclick="showTab('history')" id="tab-history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>
+    <span class="nav-lbl">History</span>
+  </button>
+  <button onclick="showTab('settings')" id="tab-settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span class="nav-lbl">Settings</span>
+  </button>
+  </div>
+</nav>
+
+<!-- COURSE MODAL -->
+<div class="modal-overlay" id="pasteJsonModal">
+  <div class="modal">
+    <h2>Load Test Data</h2>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:10px;">Paste Firebase JSON below. Loads locally only — no Firebase writes.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-outline btn-sm" onclick="setPasteTarget('state')" id="pasteTargetState" style="flex:1;border-color:var(--gold);color:var(--gold);">State</button>
+      <button class="btn btn-outline btn-sm" onclick="setPasteTarget('courses')" id="pasteTargetCourses" style="flex:1;">Courses</button>
+    </div>
+    <textarea id="pasteJsonArea" rows="10" style="width:100%;font-size:11px;font-family:monospace;border:1px solid var(--surf3);border-radius:6px;padding:8px;resize:vertical;box-sizing:border-box;" placeholder="Paste JSON here…"></textarea>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="btn btn-outline" onclick="closeModal('pasteJsonModal')">Cancel</button>
+      <button class="btn btn-gold" onclick="loadPastedJson()">LOAD</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="courseModal">
+  <div class="modal">
+    <h2 id="courseModalTitle">Add Course</h2>
+
+    <!-- Tab bar -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--bdr);margin-bottom:14px">
+      <button id="cTabManual" onclick="switchCourseTab('manual')"
+        style="flex:1;padding:8px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:var(--gold);border-bottom:2px solid var(--gold);margin-bottom:-2px;cursor:pointer">
+        Manual
+      </button>
+      <button id="cTabImport" onclick="switchCourseTab('import')"
+        style="flex:1;padding:8px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:var(--txt2);cursor:pointer">
+        Import
+      </button>
+    </div>
+
+    <!-- Manual tab -->
+    <div id="cPaneManual">
+      <div class="field"><label>Course Name</label><input type="text" id="cName" placeholder="e.g. Walden Golf Club"></div>
+      <div class="field">
+        <label>Tee Color</label>
+        <input type="text" id="cTeeColor" placeholder="e.g. White, Blue, Gold…">
+      </div>
+      <div class="field">
+        <label>Holes</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="holes-toggle active" id="holes18" onclick="setHoles(18)">18 Holes</button>
+          <button type="button" class="holes-toggle" id="holes9" onclick="setHoles(9)">9 Holes</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Slope</label><input type="number" id="cSlope" placeholder="113" min="55" max="155" inputmode="numeric"></div>
+        <div class="field"><label>Rating</label><input type="number" id="cRating" placeholder="72.0" step="0.1" inputmode="numeric"></div>
+      </div>
+      <div class="field" style="margin-bottom:4px;"><label>Scorecard</label></div>
+      <div id="scorecardGrid" style="overflow-x:auto;margin-bottom:12px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('courseModal')">Cancel</button>
+        <button class="btn btn-gold" onclick="saveCourse()">SAVE</button>
+      </div>
+    </div>
+
+    <!-- Import tab -->
+    <div id="cPaneImport" style="display:none">
+      <div class="field">
+        <label>BlueGolf Scorecard URL</label>
+        <input type="url" id="cImportUrl" placeholder="https://course.bluegolf.com/…/detailedscorecard.htm" style="font-size:12px">
+      </div>
+      <button class="btn btn-gold" style="width:100%;margin-bottom:14px" onclick="fetchBluegolf()">Fetch Tees</button>
+      <div id="cImportStatus" style="font-size:13px;color:var(--txt2);margin-bottom:8px;min-height:18px"></div>
+      <div id="cImportList"></div>
+      <div id="cImportActions" style="display:none">
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal('courseModal')">Cancel</button>
+          <button class="btn btn-gold" onclick="saveImportedTees()">Save Selected</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYER MODAL -->
+<div class="modal-overlay" id="playerModal">
+  <div class="modal">
+    <h2 id="playerModalTitle">Add Player</h2>
+    <div class="field"><label>Name</label><input type="text" id="pName" placeholder="First Last"></div>
+    <div class="field-row">
+      <div class="field"><label>GHIN #</label><input type="text" id="pGhin" placeholder="1234567"></div>
+      <div class="field"><label>Handicap Index</label><input type="number" inputmode="numeric" id="pHcp" placeholder="12.4" step="0.1"></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <button class="btn btn-outline btn-sm" onclick="fetchGhin()">🔄 Fetch GHIN Index</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('playerModal')">Cancel</button>
+      <button class="btn btn-gold" onclick="savePlayer()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal" style="z-index:300;">
+  <div class="modal">
+    <h2 id="confirmTitle">Confirm</h2>
+    <p id="confirmMsg" style="margin-bottom:18px;font-size:14px;line-height:1.5;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('confirmModal')">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY DETAIL MODAL -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <h2 id="histModalTitle">Game Summary</h2>
+    <div id="histModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="histDeleteBtn">Delete</button>
+      <button class="btn btn-outline" onclick="closeModal('historyModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE & PERSISTENCE
+// Firebase URLs, localStorage key, app version,
+// and the canonical S state object.
+// scheduleWrite() → saveLocal() + debounced fbWrite()
+// ═══════════════════════════════════════════════
+const FB_BASE        = 'https://extras-manager-default-rtdb.firebaseio.com/friday-game';
+const FB_COURSES     = 'https://extras-manager-default-rtdb.firebaseio.com/shared/courses.json';
+
+// GROUND RULES (0-21)
+// 0  Always follow the rules.
+// 1  Good structure + comments.
+// 2  Reuse where possible — read existing code first before writing new.
+// 3  Occam's razor — simplest solution that works.
+// 4  Leverage existing solutions before inventing.
+// 5  Quality over speed.
+// 6  Tidy up dead code after every change.
+// 7  Deliver deployable + version-named file.
+// 8  Security and performance by default.
+// 9  Compress chats before context bloat.
+// 10 Prepare handoff comments before it's needed.
+// 11 Test/validate + syntax check before every delivery.
+// 12 Changelog entry with timestamp on every version bump.
+// 13 No regressions — verify existing features still present after changes.
+// 14 Ask before assuming — never build unsolicited changes.
+// 15 Use system clock for timestamps, never hardcode.
+// 16 Named output files always built from working index.html — never from uploads or prior named files.
+// 17 Version bump hits FIVE locations: file header, APP_VERSION, BUILD_TIME/BUILD_TIMESTAMP, UI string, settings card.
+// 18 Read the actual error before touching code — no blind fixes.
+// 19 After generating named file verify critical constants present (LS_KEY, APP_VERSION, VERSION_KEY, FB_BASE).
+// 20 Spot-check named file against working file before presenting — feature counts must match.
+// 21 Preview every file before delivering — blank preview is an immediate stop, diagnose first.
+// 22 Before any new Firebase operation, verify compatibility with existing security rules — method, path, and writeKey payload must align.
+
+
+const FB_SHARED_GAME = 'https://extras-manager-default-rtdb.firebaseio.com/friday-game/shared/activeGame.json';
+const LS_KEY  = 'fg_v1';
+const APP_VERSION = '11.0';
+const BUILD_TIME = '2026-06-04 09:41 AM ET'; // Eastern Time — hard-coded, update when deploying
+const VERSION_KEY = 'fg_version';
+
+let S = {
+  courses: [],
+  players: [],
+  games:   [],
+  activeGame: null,
+  config: { ghinProxyUrl:'https://ghin-proxy.brianzrimsek.workers.dev' },
+  settings: { ptsDblEagle:8, ptsEagle:4, ptsBirdie:2, ptsPar:1, ptsBogey:0, ptsDbl:0 },
+  skins: { hcpAdj:100, halfStroke:false, strokeOffBest:false },
+  pairMode: 'ab',
+  gameSettings: { preCheckRegulars: true }
+};
+
+let editingCourseId  = null;
+let COURSES = []; // shared course library — loaded from /shared/courses.json
+let editingPlayerId  = null;
+let adminMode = false;
+
+/** Strip dangerous HTML chars and trim. Applied to all user-entered names. */
+function esc(str) {
+  return String(str||'').replace(/[<>"'&]/g, '').trim().slice(0, 100);
+}
+function playerById(id) { return S.players.find(p=>p.id===id); }
+/** Find course in shared COURSES array by id. Returns undefined if not found. */
+function courseById(id) { return COURSES.find(c=>c.id===id); }
+/** Ensure all required S fields exist with correct types. Safe to call on partial data. */
+function normalizeState(raw) {
+  try {
+    raw = raw || {};
+    raw.courses  = []; // courses now live in shared Firebase path — cleared from state blob
+    raw.players  = toArr(raw.players);
+    raw.games    = toArr(raw.games);
+    raw.settings = raw.settings || {};
+    raw.settings.ptsDblEagle = raw.settings.ptsDblEagle ?? 8;
+    raw.settings.ptsEagle    = raw.settings.ptsEagle    ?? 4;
+    raw.settings.ptsBirdie   = raw.settings.ptsBirdie   ?? 2;
+    raw.settings.ptsPar      = raw.settings.ptsPar      ?? 1;
+    raw.settings.ptsBogey    = raw.settings.ptsBogey    ?? 0;
+    raw.settings.ptsDbl      = raw.settings.ptsDbl      ?? 0;
+    raw.settings.historyCap  = raw.settings.historyCap  || 100;
+    raw.skins = raw.skins || { hcpAdj:100, halfStroke:false, strokeOffBest:false };
+    raw.pairMode = raw.pairMode || 'ab';
+    raw.lastCourseId = raw.lastCourseId || null;
+    if (raw.skins.strokeOffBest === undefined) raw.skins.strokeOffBest = false;
+    raw.config   = raw.config   || { ghinProxyUrl:'' };
+  if (!raw.config.homeCourseId) raw.config.homeCourseId = null;
+    if (!('latestVersion' in raw.config)) raw.config.latestVersion = null;
+    if (!Array.isArray(raw.config.log)) raw.config.log = [];
+    // writeKey comes from Firebase only — never generate locally to avoid key mismatch
+    if (!raw.config.writeKey) raw.config.writeKey = null;
+    // Ensure groups always have a players array
+    if (raw.activeGame) {
+      raw.activeGame.groups = raw.activeGame.groups || [];
+      raw.activeGame.groups.forEach(g => { if (!g.players) g.players = []; });
+    }
+    return raw;
+  } catch(e) {
+    console.error('normalizeState failed:', e);
+    return { courses:[], players:[], games:[], activeGame:null, config:{ghinProxyUrl:'https://ghin-proxy.brianzrimsek.workers.dev'}, settings:{ptsDblEagle:8,ptsEagle:4,ptsBirdie:2,ptsPar:1,ptsBogey:0,ptsDbl:0}, skins:{hcpAdj:100,halfStroke:false,strokeOffBest:false}, pairMode:'ab' };
+  }
+}
+/** Convert Firebase keyed-object to array — Firebase silently converts
+ * empty arrays to null and arrays to objects on write. */
+/** Convert Firebase value to array — Firebase drops empty arrays and converts sparse arrays to objects. */
+function toArr(v) { return v ? (Array.isArray(v) ? v : Object.values(v)) : []; }
+
+function saveLocal() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(S));
+    if (_dirty) localStorage.setItem(LS_KEY + '_dirty', '1');
+    else localStorage.removeItem(LS_KEY + '_dirty');
+  } catch(e){ toast('⚠️ Storage full — data not saved locally. Firebase sync still active.'); }
+}
+function loadLocal() {
+  try { const r=localStorage.getItem(LS_KEY); if(r) S=normalizeState(JSON.parse(r)); } catch(e){}
+}
+
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('sync-status');
+  if (el) { el.textContent = '⬤ ' + msg; el.style.color = color || 'var(--g300)'; }
+}
+
+// Keep legacy aliases for backward compat during refactor
+let _writeTimer = null;
+let _dirty     = false;  // true when local state ahead of Firebase
+/** Persist state locally and debounce Firebase write by 1.5s to avoid write storms. */
+function scheduleWrite() {
+  S = normalizeState(S);
+  saveLocal();
+  _dirty = true;
+  if (_writeTimer) clearTimeout(_writeTimer);
+  _writeTimer = setTimeout(() => { fbWrite(S); _writeTimer = null; }, DEBOUNCE_MS);
+}
+
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { ...options, signal: ctrl.signal });
+    clearTimeout(timer);
+    return r;
+  } catch(e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+async function fbWrite(data, attempt = 0) {
+  // Don't write until we have the real writeKey from Firebase
+  if (!data.config || !data.config.writeKey) {
+    setSyncStatus('pending', 'var(--gold)');
+    return;
+  }
+  setSyncStatus('saving…', 'var(--gold)');
+  try {
+    const resp = await fetchWithTimeout(FB_BASE+'/state.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    _dirty = false;
+    localStorage.removeItem(LS_KEY + '_dirty');
+    setSyncStatus('synced', '#86efac');
+    appLog('Firebase sync OK');
+  } catch(e) {
+    if (attempt < 3) {
+      setTimeout(() => fbWrite(data, attempt + 1), 2000 * Math.pow(2, attempt));
+      setSyncStatus('retrying…', 'var(--gold)');
+    } else {
+      setSyncStatus('offline', '#f87171');
+    }
+  }
+}
+
+async function fbLoadSharedGame() {
+  if (!S.activeGame) return; // no point polling if no game in progress
+  try {
+    const r = await fetchWithTimeout(FB_SHARED_GAME);
+    const d = await r.json();
+    if (d && d.id && d.id !== (S.activeGame && S.activeGame.id)) {
+      S.activeGame = d; saveLocal(); renderAll();
+    }
+  } catch(e) {}
+}
+
+async function fbLoad() {
+  setSyncStatus('syncing…', 'var(--gold)');
+  fetchWithTimeout(FB_BASE+'/state.json')
+    .then(r => r && r.ok ? r.json() : null)
+    .then(remote => {
+      if (remote && typeof remote === 'object') {
+        const normalized = normalizeState(remote);
+        const hasRemoteData = (normalized.players && normalized.players.length) ||
+                              // courses excluded — now in shared path
+                              (normalized.games   && normalized.games.length);
+        if (hasRemoteData) {
+          // Firebase has real data — use it
+          S = normalized;
+          // Always show rejoin/abandon choice on fresh load — never auto-resume
+          if (S.activeGame) S.activeGame._scoring = false;
+          saveLocal();
+          renderAll();
+          setSyncStatus('ready', '#86efac');
+          loadCourses();
+        } else {
+          // Firebase has config only (fresh setup) — keep local data, push it up
+          S.config = normalized.config || S.config;
+          saveLocal();
+          renderAll();
+          setSyncStatus('ready', '#86efac');
+          loadCourses();
+          // Push local data to Firebase now that we have the writeKey
+          if (S.config.writeKey) fbWrite(S);
+        }
+      } else {
+        setSyncStatus('local', 'var(--g300)');
+      }
+    })
+    .catch(() => setSyncStatus('offline', '#f87171'));
+}
+
+
+// ═══════════════════════════════════════════════
+// SHARED COURSE LIBRARY
+// Courses live at /shared/courses.json — independent of per-app state.
+// loadCourses() fetches on startup and after saves.
+// saveCourses() PUTs the full array using the same writeKey as state.
+// Migration: if S.courses has data and shared path is empty, migrate up.
+// ═══════════════════════════════════════════════
+async function loadCourses() {
+  // Auto-clear the local override only on production domain (not in preview)
+  const isProduction = window.location.hostname.includes('github.io');
+  if (isProduction && S.config && S.config.writeKey && localStorage.getItem('fg_local_courses')) {
+    localStorage.removeItem('fg_local_courses');
+    localStorage.removeItem('fg_local_courses_data');
+    window._localCoursesOverride = false;
+  }
+  // Use pasted courses if override flag is set — skip Firebase fetch
+  window._localCoursesOverride = window._localCoursesOverride || !!localStorage.getItem('fg_local_courses');
+  if (window._localCoursesOverride) {
+    const saved = localStorage.getItem('fg_local_courses_data');
+    if (saved) { try { COURSES = JSON.parse(saved); renderCourses(); refreshCourseDefault(); return; } catch(e) {} }
+  }
+  try {
+    const r = await fetchWithTimeout(FB_COURSES, {}, 8000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const raw = await r.json();
+    const arr = raw && raw.courses ? (Array.isArray(raw.courses) ? raw.courses : Object.values(raw.courses)) : [];
+    // If Firebase returned empty but we have pasted courses — keep them
+    if (!arr.length && window._localCoursesOverride) return;
+    // Merge local S.courses into shared — dedup by id, never overwrite
+    if (S.courses && S.courses.length > 0) {
+      const existingIds = new Set(arr.map(c => c.id));
+      const toMerge = S.courses.filter(c => !existingIds.has(c.id));
+      if (toMerge.length > 0) {
+        COURSES = [...arr, ...toMerge];
+        await saveCourses();
+        appLog('Courses merged to shared path: ' + toMerge.length + ' added');
+      } else {
+        COURSES = arr;
+      }
+      if (S.config && S.config.writeKey) S.courses = []; // clear after merge only if writeKey present
+    } else {
+      COURSES = arr;
+    }
+    renderCourses();
+    refreshCourseDefault();
+  } catch(e) {
+    // Fallback: use localStorage override data if available
+    const saved = localStorage.getItem('fg_local_courses_data');
+    if (saved) {
+      try { COURSES = JSON.parse(saved); window._localCoursesOverride = true; renderCourses(); refreshCourseDefault(); return; } catch(ex) {}
+    }
+    if (S.courses && S.courses.length) COURSES = S.courses.slice();
+    appLog('loadCourses failed: ' + e.message);
+  }
+}
+
+function refreshCourseDefault() {
+  // After courses load, set default course in game setup if not already selected
+  const sel = document.getElementById('gsCourse');
+  if (!sel || S.activeGame) return; // only on setup screen
+  if (sel.value) return; // already has a selection
+  const homeCourse = COURSES.find(c => c.homeCourse);
+  if (homeCourse) sel.value = homeCourse.id;
+  else if (S.lastCourseId && courseById(S.lastCourseId)) sel.value = S.lastCourseId;
+  if (sel.value) updateFrontBackVisibility();
+}
+
+async function saveCourses() {
+  if (!S.config || !S.config.writeKey) return;
+  try {
+    const resp = await fetchWithTimeout(FB_COURSES, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writeKey: S.config.writeKey, courses: COURSES })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  } catch(e) {
+    toast('Course save failed — check connection and try again.', TOAST_ERR_MS);
+  }
+}
+
+
+// ═══════════════════════════════════════════════
+// UTILS
+// uid, sanitize, fmtHcp, fmtDate, toast, modal helpers.
+// ═══════════════════════════════════════════════
+/** Generate a collision-resistant unique ID using crypto.randomUUID() when available. */
+/** Generate a short random ID for new records. */
+function uid() { return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+/** Extract last name for sorting — splits on space, returns last token. */
+function lastNameOf(n) { const p=n.trim().split(' '); return p[p.length-1].toLowerCase(); }
+/** Format handicap index for display — plus prefix for negative values. */
+function fmtHcp(h) {
+  if (h===null||h===undefined||isNaN(h)) return '—';
+  const n=parseFloat(h);
+  return n<0 ? '+'+Math.abs(n).toFixed(1) : n.toFixed(1);
+}
+function fmtDate(ts) {
+  return new Date(ts).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+// Toast duration constants — matches Extras Manager tiered pattern
+const DEBOUNCE_MS   = 800;   // Firebase save debounce — matches Extras Manager
+const TOAST_MS      = 2000;  // standard
+const TOAST_LONG_MS = 4000;  // success with detail
+const TOAST_ERR_MS  = 5000;  // errors
+
+/** Show a brief status message at the bottom of the screen. */
+function toast(msg, dur=TOAST_MS) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+/** Open a modal by adding its open class. */
+function showModal(id) { document.getElementById(id).classList.add('open'); }
+/** Close a modal by removing its open class. */
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function confirmDo(title, msg, fn) {
+  const ctEl=document.getElementById('confirmTitle'); if(ctEl) ctEl.textContent=title;
+  const cmEl=document.getElementById('confirmMsg'); if(cmEl) cmEl.textContent=msg;
+  const btn = document.getElementById('confirmOkBtn');
+  if(btn) btn.onclick = ()=>{ closeModal('confirmModal'); fn(); };
+  showModal('confirmModal');
+}
+
+/** Returns true if admin mode is active (write operations visible). */
+function isAdmin() { return adminMode; }
+
+// ═══ COURSE HOLES TOGGLE ═══
+let _courseHoles = 18;
+
+
+// ═══════════════════════════════════════════════
+// COURSE IMPORT — BlueGolf
+// ═══════════════════════════════════════════════
+function switchCourseTab(tab) {
+  const m = tab === 'manual';
+  document.getElementById('cPaneManual').style.display = m ? '' : 'none';
+  document.getElementById('cPaneImport').style.display = m ? 'none' : '';
+  document.getElementById('cTabManual').style.color = m ? 'var(--gold)' : 'var(--txt2)';
+  document.getElementById('cTabManual').style.borderBottom = m ? '2px solid var(--gold)' : 'none';
+  document.getElementById('cTabImport').style.color = m ? 'var(--txt2)' : 'var(--gold)';
+  document.getElementById('cTabImport').style.borderBottom = m ? 'none' : '2px solid var(--gold)';
+}
+
+let _importedTees = [];
+
+async function fetchBluegolf(existingUrl) {
+  const raw = existingUrl || document.getElementById('cImportUrl').value.trim();
+  if (!raw) return toast('Paste a BlueGolf URL or course ID first');
+  // Accept full URL or just the course slug (e.g. "waldengtennis")
+  let url = raw;
+  if (!raw.startsWith('http')) {
+    // Strip any trailing slashes and construct full scorecard URL
+    const slug = raw.replace(/\/+$/, '').split('/').pop();
+    url = `https://course.bluegolf.com/bluegolf/course/course/${slug}/detailedscorecard.htm`;
+  } else if (raw.includes('bluegolf.com') && !raw.includes('detailedscorecard')) {
+    // Full URL but missing detailedscorecard — append it
+    url = raw.replace(/\/+$/, '') + '/detailedscorecard.htm';
+  }
+  const statusEl = document.getElementById('cImportStatus');
+  const listEl   = document.getElementById('cImportList');
+  const actEl    = document.getElementById('cImportActions');
+  statusEl.textContent = 'Fetching…';
+  listEl.innerHTML = '';
+  actEl.style.display = 'none';
+  _importedTees = [];
+  try {
+    const proxy = (S.config.ghinProxyUrl || 'https://ghin-proxy.brianzrimsek.workers.dev')
+                  + '/bluegolf?url=' + encodeURIComponent(url);
+    const resp = await fetchWithTimeout(proxy, {}, 15000);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+    if (data.error) throw new Error(data.error);
+    const all = data.tees || [];
+    if (!all.length) throw new Error('No tee data found');
+    const savedKeys = new Set(COURSES.filter(c => c.sourceUrl === url).map(c => c.teeColor));
+    _importedTees = all.filter(t => !savedKeys.has(t.teeName));
+    const doneCount = all.length - _importedTees.length;
+    statusEl.textContent = data.courseName + (doneCount ? ` · ${doneCount} tee${doneCount>1?'s':''} already saved` : '');
+    if (!_importedTees.length) {
+      listEl.innerHTML = '<div style="font-size:13px;color:var(--txt2);padding:8px 0">All tees already saved.</div>';
+      return;
+    }
+    listEl.innerHTML = _importedTees.map((t, i) => `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);cursor:pointer">
+        <input type="checkbox" data-idx="${i}" style="width:18px;height:18px;accent-color:var(--gold)" checked>
+        <div>
+          <div style="font-size:14px;font-weight:600">${esc(t.teeName)}</div>
+          <div style="font-size:12px;color:var(--txt2)">Slope ${t.slope} &middot; Rating ${t.rating} &middot; Par ${t.par} &middot; ${t.nineHole?9:18} holes</div>
+        </div>
+      </label>`).join('');
+    actEl.style.display = '';
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function saveImportedTees() {
+  const checks = document.querySelectorAll('#cImportList input[type=checkbox]:checked');
+  if (!checks.length) return toast('Select at least one tee');
+  let saved = 0;
+  checks.forEach(cb => {
+    const t = _importedTees[parseInt(cb.dataset.idx)];
+    if (!t) return;
+    COURSES.push({ id:uid(), name:t.courseName, teeColor:t.teeName, slope:t.slope,
+      rating:t.rating, par:t.par, nineHole:t.nineHole, sourceUrl:t.sourceUrl,
+      holes:t.holes.map(h=>({num:h.num, par:h.par, hcpRating:h.hcp, hcp:h.hcp})) });
+    saved++;
+  });
+  closeModal('courseModal'); saveCourses(); renderCourses();
+  toast(`${saved} tee${saved>1?'s':''} saved ✓`);
+}
+
+function openImportForSource(url) {
+  openCourseModal();
+  setTimeout(() => { switchCourseTab('import'); document.getElementById('cImportUrl').value = url; fetchBluegolf(url); }, 80);
+}
+
+function setHoles(n, parVals, hcpVals) {
+  _courseHoles = n;
+  document.getElementById('holes18').classList.toggle('active', n===18);
+  document.getElementById('holes9').classList.toggle('active', n===9);
+  buildScorecardGrid(n, parVals||[], hcpVals||[]);
+}
+
+
+function buildScorecardGrid(n, parVals, hcpVals) {
+  const container = document.getElementById('scorecardGrid');
+  if (!container) return;
+
+  // For 18 holes: two rows of 9. For 9 holes: one row.
+  const makeRow = (startHole, count, rowPars, rowHcps) => {
+    const holeNums = Array.from({length:count},(_,i)=>startHole+i);
+    const parSum   = rowPars.reduce((a,v)=>a+(parseInt(v)||0),0);
+    const tabBase  = (startHole - 1) * 2; // front nine: 0, back nine: 18
+    const hcpInputs = holeNums.map((h,i)=>{
+      const v = rowHcps[i]!==undefined ? rowHcps[i] : '';
+      return `<td><input type="number" min="1" max="${n===9?9:18}" value="${v}" data-sc="hcp" data-hole="${startHole+i-1}" tabindex="${tabBase+i*2+2}" placeholder="—" inputmode="numeric"></td>`;
+    }).join('');
+    const parInputs = holeNums.map((h,i)=>{
+      const v = rowPars[i]!==undefined ? rowPars[i] : '';
+      return `<td><input type="number" min="3" max="6" value="${v}" data-sc="par" data-hole="${startHole+i-1}" tabindex="${tabBase+i*2+1}" placeholder="—" inputmode="numeric"></td>`;
+    }).join('');
+    return `
+      <tr>
+        <td class="row-label">Hole</td>
+        ${holeNums.map(h=>`<th>${h}</th>`).join('')}
+        <td class="total-cell">${n===9?'TOT':startHole===1?'OUT':'IN'}</td>
+      </tr>
+      <tr>
+        <td class="row-label">Par</td>
+        ${parInputs}
+        <td class="total-cell" id="parTotal${startHole}">${parSum||''}</td>
+      </tr>
+      <tr>
+        <td class="row-label">HCP</td>
+        ${hcpInputs}
+        <td class="total-cell">—</td>
+      </tr>`;
+  };
+
+  let front9Par  = parVals.slice(0,9);
+  let back9Par   = parVals.slice(9,18);
+  let front9Hcp  = hcpVals.slice(0,9);
+  let back9Hcp   = hcpVals.slice(9,18);
+
+  let tableRows = makeRow(1, 9, front9Par, front9Hcp);
+  if (n===18) tableRows += makeRow(10, 9, back9Par, back9Hcp);
+
+  container.innerHTML = `<table class="sc-grid"><tbody>${tableRows}</tbody></table>`;
+
+  // Live par total update
+  container.querySelectorAll('input[data-sc="par"]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      // Recompute front/back totals
+      const f = [...container.querySelectorAll('input[data-sc="par"]')].slice(0,9).reduce((a,i)=>a+(parseInt(i.value)||0),0);
+      const fEl = document.getElementById('parTotal1');
+      if (fEl) fEl.textContent = f||'—';
+      if (n===18) {
+        const b = [...container.querySelectorAll('input[data-sc="par"]')].slice(9,18).reduce((a,i)=>a+(parseInt(i.value)||0),0);
+        const bEl = document.getElementById('parTotal10');
+        if (bEl) bEl.textContent = b||'—';
+      }
+    });
+  });
+}
+
+function getScorecardValues() {
+  const container = document.getElementById('scorecardGrid');
+  if (!container) return { parVals:[], hcpVals:[] };
+  const parInputs = [...container.querySelectorAll('input[data-sc="par"]')];
+  const hcpInputs = [...container.querySelectorAll('input[data-sc="hcp"]')];
+  return {
+    parVals: parInputs.map(i=>parseInt(i.value)||0),
+    hcpVals: hcpInputs.map(i=>parseInt(i.value)||0)
+  };
+}
+
+// ═══ GAME 9-HOLE SELECTION ═══
+let _gameNine = 'front';
+
+function updateFrontBackVisibility() {
+  const courseId = document.getElementById('gsCourse').value;
+  const course   = courseById(courseId);
+  const picker   = document.getElementById('gsNinePicker');
+  if (!picker) return;
+  if (!course) { picker.style.display = 'none'; return; }
+  if (course.nineHole) {
+    // Dedicated 9-hole course — show F/B only (no 18 option)
+    picker.style.display = 'flex';
+    const gs18 = document.getElementById('gs18');
+    if (gs18) gs18.style.display = 'none';
+    setGameNineMode('front');
+  } else {
+    // 18-hole course — show all three options, default to 18
+    picker.style.display = 'flex';
+    const gs18 = document.getElementById('gs18');
+    if (gs18) gs18.style.display = '';
+    setGameNineMode('all');
+  }
+  requestAnimationFrame(setGameTabHeight);
+}
+
+function setGameNineMode(mode) {
+  const gs18    = document.getElementById('gs18');
+  const gsFront = document.getElementById('gsFront');
+  const gsBack  = document.getElementById('gsBack');
+  if (gs18)    gs18.classList.toggle('active',    mode === 'all');
+  if (gsFront) gsFront.classList.toggle('active', mode === 'front');
+  if (gsBack)  gsBack.classList.toggle('active',  mode === 'back');
+  window._gsNineMode = mode;
+  // If a game is active on the quotas page, update activeHoleCount and re-render
+  if (S.activeGame && S.activeGame.phase === 'targets') {
+    const is9 = mode !== 'all';
+    S.activeGame.activeHoleCount = is9 ? 9 : 18;
+    S.activeGame.nineSide = mode === 'all' ? 'all' : mode;
+    // Recalculate ptTarget for all players based on new hole count
+    S.activeGame.players.forEach(p => {
+      p.ptTarget = pointTarget(p.courseHcp, is9);
+    });
+    saveLocal();
+    renderActiveGame();
+  }
+}
+function toggleAdmin() {
+  const chk = document.getElementById('adminModeToggle');
+  adminMode = chk ? chk.checked : !adminMode;
+  const desc = document.getElementById('adminModeDesc');
+  if (desc) desc.textContent = adminMode ? 'On — delete actions visible' : 'Off — delete actions hidden';
+  // Show/hide history delete button
+  const hdb = document.getElementById('histDeleteBtn');
+  if (hdb) hdb.style.display = adminMode ? '' : 'none';
+  _lastRenderHash = null;
+  renderAll();
+  renderSettings();
+  toast(adminMode ? 'Admin mode ON' : 'Admin mode OFF');
+}
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+let _activeTab = 'game';
+let _cachedHH = null, _cachedNH = null;
+/** Measure available vertical space and set explicit pixel heights on the two player list boxes.
+ * Called after render and on resize. Header/nav heights cached after first measurement. */
+// NOTE: setGameTabHeight() uses JS pixel math to size the two player group boxes.
+// The boxes already have flex:1;min-height:0;overflow-y:auto in CSS — ideally the
+// browser handles this. However, removing this function risks layout breakage on
+// device since the ancestor flex chain hasn't been verified without JS intervention.
+// Deferred for a dedicated on-device CSS audit before removal.
+function setGameTabHeight() {
+  const pl = document.getElementById('gsPlayerList');
+  if (!pl) return;
+  const nav = document.querySelector('nav');
+  const navH = nav ? nav.getBoundingClientRect().height : 60;
+  const rect = pl.getBoundingClientRect();
+  const h = window.innerHeight - rect.top - navH - 16;
+  if (h > 80) pl.style.height = h + 'px';
+}
+window.addEventListener('resize', () => { _cachedHH = null; _cachedNH = null; setGameTabHeight(); setActiveCardHeight(); });
+
+/** Measure available height and set it explicitly on the scrollable body
+ * of whichever phase card is currently visible. */
+/** Measure visible space and size the scrollable body of the active phase card
+ * to fill exactly to the nav bar — called after render and on resize. */
+/** Measure available space and set the active phase card body height to fill to the nav bar. */
+function setActiveCardHeight() {
+  const nav = document.querySelector('nav');
+  if (_cachedNH === null) {
+    const header = document.querySelector('header');
+    if (_cachedHH === null) _cachedHH = header ? header.getBoundingClientRect().height : 60;
+    _cachedNH = nav ? nav.getBoundingClientRect().height : 55;
+  }
+
+  const cards = [
+    { card: 'gameInfoCard', body: 'gInfoBody' },
+    { card: 'groupsCard',   body: 'groupsBody' },
+    { card: 'scoreCard',    body: 'scoreEntryBody' },
+    { card: 'resultsCard',  body: 'resultsBody' },
+  ];
+
+  cards.forEach(({ card, body }) => {
+    const cardEl = document.getElementById(card);
+    if (!cardEl || cardEl.style.display === 'none') return;
+
+    const bodyEl = document.getElementById(body);
+    if (!bodyEl) return;
+
+    // Measure all non-body children inside the card
+    let nonBodyH = 0;
+    Array.from(cardEl.children).forEach(child => {
+      if (child !== bodyEl) {
+        nonBodyH += child.getBoundingClientRect().height;
+      }
+    });
+
+    // Card padding (top + bottom from CSS override)
+    const cardStyle = window.getComputedStyle(cardEl);
+    const cardPadV = parseFloat(cardStyle.paddingTop) + parseFloat(cardStyle.paddingBottom);
+
+    // Card's top position relative to viewport
+    const cardTop = cardEl.getBoundingClientRect().top;
+    const navH = _cachedNH;
+
+    const bodyH = Math.max(60, window.innerHeight - navH - cardTop - cardPadV - nonBodyH - 8);
+
+    bodyEl.style.height    = bodyH + 'px';
+    bodyEl.style.overflowY = 'auto';
+    bodyEl.style.flex      = 'none';
+  });
+}
+function showTab(name) {
+  // If leaving game tab while on setup screen, preserve selections for return
+  if (_activeTab === 'game' && name !== 'game' && !S.activeGame) {
+    window._savedGameSetupIds = [...document.querySelectorAll('#gsPlayerList input:checked')].map(x=>x.value);
+    window._savedGameSetupCourseId = document.getElementById('gsCourse')?.value || null;
+  }
+  _activeTab = name;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name+'-content').classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'game') setGameTabHeight();
+  renderTab(name);
+}
+function renderTab(name) {
+  if (name==='game')     renderGame();
+  if (name==='courses')  renderCourses();
+  if (name==='players')  renderPlayers();
+  if (name==='history')  renderHistory();
+  if (name==='settings') renderSettings();
+}
+
+
+let _lastRenderHash = null;
+/** Lightweight hash of state fields that affect rendering. Used to skip redundant renderAll() calls. */
+function stateHash() {
+  const g = S.activeGame;
+  return JSON.stringify({
+    pc: S.players.length, cc: COURSES.length, gc: S.games.length,
+    ag: g ? g.id : null,
+    sc: g ? Object.values(g.scores||{}).reduce((a,h)=>a+Object.keys(h).length,0) : 0,
+    ph: g ? g.phase : null,
+    gr: g ? (g.groups||[]).reduce((a,gr)=>a+gr.players.length,0) : 0,
+    pn: S.players.map(p=>p.name+p.hcp).join(',')
+  });
+}
+function renderAll() {
+  renderHeader();
+  const h = stateHash();
+  if (h === _lastRenderHash) return;
+  _lastRenderHash = h;
+  try {
+    renderTab(_activeTab);
+  } catch(e) {
+    console.error('renderAll crashed:', e);
+    _lastRenderHash = null;
+    const el = document.querySelector('#tab-game-content') || document.querySelector('main');
+    if (el) el.innerHTML = `<div class="card" style="text-align:center;padding:32px;color:var(--red);">
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Something went wrong</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">${e.message}</div>
+      <button class="btn btn-gold" onclick="location.reload()">Reload App</button>
+    </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// COURSES
+// ═══════════════════════════════════════════════
+function sortedCourses() {
+  const favs = COURSES.filter(c => c.favorite || c.homeCourse).sort((a,b)=>a.name.localeCompare(b.name));
+  const rest  = COURSES.filter(c => !c.favorite && !c.homeCourse).sort((a,b)=>a.name.localeCompare(b.name));
+  return { home: COURSES.find(c=>c.homeCourse)||null, favs, rest, all: [...favs,...rest] };
+}
+
+function courseOptionsHTML(selectedId) {
+  const {favs, rest} = sortedCourses();
+  const opt = c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${esc(c.name)}${c.teeColor?' — '+esc(c.teeColor):''}${c.homeCourse?'  🏠':c.favorite?' ★':''}</option>`;
+  let html = '<option value="">— select course —</option>';
+  if (favs.length) {
+    html += '<option disabled>── My Courses ──</option>';
+    html += favs.map(opt).join('');
+    if (rest.length) html += '<option disabled>── All Courses ──</option>';
+  }
+  html += rest.map(opt).join('');
+  return html;
+}
+
+function toggleFavorite(id) {
+  const c = courseById(id); if (!c) return;
+  c.favorite = !c.favorite;
+  if (!c.favorite && c.homeCourse) c.homeCourse = false;
+  saveCourses(); renderCourses();
+}
+
+function setHomeCourse(id) {
+  COURSES.forEach(c => { c.homeCourse = c.id === id ? !c.homeCourse : false; });
+  saveCourses(); renderCourses(); renderSettings();
+}
+
+/** Render the course library list in the Courses tab. */
+function renderCourses() {
+  const el = document.getElementById('courseList');
+  if (!el) return; // courses tab not active
+  if (!COURSES.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏌️</div><p>No courses yet.</p></div>'; return;
+  }
+  const {favs, rest} = sortedCourses();
+  const courseRow = c => {
+    const isFav  = c.favorite || c.homeCourse;
+    const isHome = !!c.homeCourse;
+    return `<div class="list-item">
+      <div style="flex:1;min-width:0;">
+        <div class="li-main">${isHome?'🏠 ':''}${esc(c.name)}${c.teeColor?` <span style="font-size:11px;color:var(--txt2)">${esc(c.teeColor)}</span>`:''}</div>
+        <div class="li-sub">Slope ${c.slope} &middot; Rating ${c.rating} &middot; Par ${c.par||c.holes.reduce((a,h)=>a+h.par,0)} &middot; ${c.nineHole?'9':'18'} holes</div>
+      </div>
+      <div class="li-actions">
+        <button class="btn btn-sm btn-outline" title="${isHome?'Remove home course':'Set as home course'}" onclick="setHomeCourse('${c.id}')" style="${isHome?'background:var(--gold);border-color:var(--gold);color:#1a3a1a;font-weight:700;':''}">🏠</button>
+        <button class="btn btn-sm btn-outline" title="${isFav?'Remove from My Courses':'Add to My Courses'}" onclick="toggleFavorite('${c.id}')" style="${isFav?'background:var(--gold);border-color:var(--gold);color:#1a3a1a;font-weight:700;':''}">★</button>
+        ${c.sourceUrl?`<button class="btn btn-sm btn-outline" title="Fetch more tees" onclick="openImportForSource('${c.sourceUrl}')">↓</button>`:''}
+        <button class="btn btn-sm btn-outline" data-action="editCourse" data-id="${c.id}">Edit</button>
+        ${isAdmin()?`<button class="btn btn-sm btn-danger" data-action="deleteCourse" data-id="${c.id}">✕</button>`:''}
+      </div>
+    </div>`;
+  };
+  let html = '';
+  if (favs.length) {
+    html += `<div style="padding:4px 0 2px;font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.5px;">★ MY COURSES</div>`;
+    html += favs.map(courseRow).join('');
+    if (rest.length) html += `<div style="padding:4px 0 2px;margin-top:4px;font-size:10px;font-weight:700;color:var(--txt2);letter-spacing:.5px;">ALL COURSES</div>`;
+  }
+  html += rest.map(courseRow).join('');
+  el.innerHTML = html;
+}
+
+function onGameCourseChange(sel) {
+  if (sel.value === '__edit__') {
+    sel.value = S.activeGame ? S.activeGame.courseId : '';
+    editCourseFromGame();
+  } else {
+    changeActiveGameCourse(sel.value);
+  }
+}
+
+function setActiveGameNine(side) {
+  if (!S.activeGame) return;
+  const course = courseById(S.activeGame.courseId);
+  if (!course) return;
+  S.activeGame.nineSide = side;
+  S.activeGame.activeHoleCount = side === 'all' ? 18 : 9;
+  // Rebuild CH for new hole count then re-render
+  changeActiveGameCourse(S.activeGame.courseId);
+}
+
+function editCourseFromGame() {
+  if (!S.activeGame) return;
+  const courseId = S.activeGame.courseId;
+  if (!courseId) return toast('No course on active game');
+  openCourseModal(courseId);
+}
+
+function changeActiveGameCourse(courseId) {
+  if (!courseId || !S.activeGame) return;
+  const course = courseById(courseId);
+  if (!course) return toast('Course not found');
+  const g = S.activeGame;
+  const is9ofCourse = g.activeHoleCount === 9 && !course.nineHole;
+  const is9hole     = g.activeHoleCount === 9 || course.nineHole;
+  const fullPar     = course.par || course.holes.reduce((a,h)=>a+h.par,0);
+  const skinsAdj    = S.skins.hcpAdj || 100;
+  g.players.forEach(p => {
+    let ch;
+    if (is9ofCourse) {
+      const idx9 = p.hcp / 2;
+      const rat9 = course.rating / 2;
+      const par9 = fullPar / 2;
+      ch = Math.round(idx9 * (course.slope / 113) + (rat9 - par9));
+    } else {
+      ch = calcCourseHcp(p.hcp, course.slope, course.rating, fullPar, 100, is9hole);
+    }
+    p.courseHcp = ch;
+    p.skinsCh   = Math.floor(ch * skinsAdj / 100);
+    p.ptTarget  = pointTarget(ch, is9hole);
+  });
+  g.courseId   = course.id;
+  g.courseName = course.name;
+  g.teeColor   = course.teeColor || '';
+  scheduleWrite();
+  renderActiveGame();
+  toast(`Course changed to ${esc(course.name)}${course.teeColor?' · '+course.teeColor:''} ✓`);
+}
+
+function openCourseModal(id) {
+  editingCourseId = id || null;
+  const cmtEl=document.getElementById('courseModalTitle'); if(cmtEl) cmtEl.textContent=id?'Edit Course':'Add Course';
+  if (id) {
+    const c = courseById(id);
+    const _n=document.getElementById('cName'); if(_n) _n.value=c.name;
+    const _t=document.getElementById('cTeeColor'); if(_t) _t.value=c.teeColor||'';
+    const _s=document.getElementById('cSlope'); if(_s) _s.value=c.slope;
+    const _r=document.getElementById('cRating'); if(_r) _r.value=c.rating;
+    setHoles(c.nineHole ? 9 : 18, c.holes.map(h=>h.par), c.holes.map(h=>h.hcpRating||h.hcp||0));
+  } else {
+    ['cName','cTeeColor'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('cSlope').value=''; document.getElementById('cRating').value='';
+    setHoles(18, [], []);
+  }
+  switchCourseTab('manual');
+  showModal('courseModal');
+}
+
+
+// Validate hole handicap ratings:
+// 1. No duplicates
+// 2. All values 1–n (exact set)
+// 3. For 18-hole courses: each nine is all-odd or all-even
+// Returns error message string, or null if valid.
+function validateHoleHcps(hcps) {
+  const n = hcps.length;
+  const actual = new Set(hcps);
+  const allOdd  = arr => arr.every(v => v % 2 !== 0);
+  const allEven = arr => arr.every(v => v % 2 === 0);
+
+  // Rule 1: no duplicates
+  if (actual.size !== n) return 'Handicap ratings must be unique — no duplicates';
+
+  if (n === 9) {
+    // Rule 2 (9-hole): accept sequential 1–9, all-odd 1–18, or all-even 2–18
+    const isSeq     = [1,2,3,4,5,6,7,8,9].every(v => actual.has(v));
+    const isAllOdd  = allOdd(hcps)  && Math.max(...hcps) <= 18 && Math.min(...hcps) >= 1;
+    const isAllEven = allEven(hcps) && Math.max(...hcps) <= 18 && Math.min(...hcps) >= 2;
+    if (!isSeq && !isAllOdd && !isAllEven)
+      return 'For 9 holes, use sequential 1–9, all-odd 1–18 (odds only), or all-even 2–18 (evens only)';
+  } else {
+    // Rule 2 (18-hole): complete set 1–18
+    for (let i = 1; i <= n; i++) {
+      if (!actual.has(i)) return `Handicap ratings must use every value 1–${n} exactly once (missing ${i})`;
+    }
+    // Rule 3: each nine must be all-odd or all-even
+    const front = hcps.slice(0, 9);
+    const back  = hcps.slice(9, 18);
+    if (!allOdd(front) && !allEven(front))
+      return 'Front 9 handicaps must all be odd (1,3,5…17) or all even (2,4,6…18)';
+    if (!allOdd(back) && !allEven(back))
+      return 'Back 9 handicaps must all be odd (1,3,5…17) or all even (2,4,6…18)';
+  }
+  return null; // valid
+}
+function saveCourse() {
+  const name      = document.getElementById('cName').value.trim();
+  const teeColor  = document.getElementById('cTeeColor').value.trim();
+  const slope     = parseFloat(document.getElementById('cSlope').value);
+  const rating = parseFloat(document.getElementById('cRating').value);
+  const { parVals: parRaw, hcpVals: hcpRaw } = getScorecardValues();
+
+  if (!name||isNaN(slope)||isNaN(rating)) return toast('Name, slope & rating required');
+  const expectedHoles = _courseHoles;
+  const validPar = parRaw.filter(v=>v>=3&&v<=6);
+  const validHcp = hcpRaw.filter(v=>v>=1&&v<=18);
+  if (validPar.length!==expectedHoles) return toast(`Enter par for all ${expectedHoles} holes (3–6)`);
+  if (validHcp.length!==expectedHoles) return toast(`Enter handicap rating for all ${expectedHoles} holes`);
+  const hcpErr = validateHoleHcps(hcpRaw);
+  if (hcpErr) return toast(hcpErr);
+
+  const holeCount = _courseHoles;
+  const holes = Array.from({length:holeCount},(_,i)=>({num:i+1,par:parRaw[i],hcpRating:hcpRaw[i],hcp:hcpRaw[i]}));
+
+  const par = holes.reduce((a,h)=>a+h.par, 0);
+  if (editingCourseId) {
+    Object.assign(courseById(editingCourseId), {name,teeColor,slope,rating,par,holes,nineHole:holeCount===9});
+  } else {
+    COURSES.push({id:uid(),name,teeColor,slope,rating,par,holes,nineHole:holeCount===9});
+  }
+  closeModal('courseModal'); saveCourses(); renderCourses();
+  // If saved course matches active game, rebuild CH and re-render
+  if (S.activeGame && S.activeGame.courseId === editingCourseId) {
+    changeActiveGameCourse(editingCourseId);
+    return;
+  }
+  toast('Course saved ✓');
+}
+
+// ═══════════════════════════════════════════════
+// PLAYERS
+// ═══════════════════════════════════════════════
+/** Render the player roster list in the Players tab. */
+function renderPlayers() {
+  const el = document.getElementById('roster-rows');
+  if (!el) return;
+  const hdr = document.getElementById('roster-header-row');
+  if (hdr) hdr.style.gridTemplateColumns = isAdmin() ? '1fr 80px 90px 36px 36px' : '1fr 80px 36px 36px';
+  const ghinHdr = document.getElementById('roster-ghin-header');
+  if (ghinHdr) ghinHdr.style.display = isAdmin() ? '' : 'none';
+  const sorted = [...S.players].sort((a,b) => lastNameOf(a.name).localeCompare(lastNameOf(b.name)));
+  if (!sorted.length) {
+    el.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:12px 2px;">No players yet. Tap "+ Add Player" to begin.</div>`;
+    return;
+  }
+  el.innerHTML = sorted.map(p => {
+    const cols = isAdmin() ? '1fr 80px 90px 36px 36px' : '1fr 80px 36px 36px';
+    return `<div id="row-${p.id}" style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--surf3);${!p.ghin?'border-left:2px solid #f87171;padding-left:4px;background:rgba(248,113,113,0.06);':''}">
+      <input type="text" value="${(p.name||'').replace(/"/g,'&quot;')}"
+        style="font-size:14px;font-family:'DM Sans',sans-serif;border:none;border-bottom:1px solid transparent;background:transparent;padding:4px 2px;width:100%;color:var(--text);"
+        onchange="rosterUpdateName('${p.id}', this.value)"
+        onfocus="this.style.borderBottomColor='var(--gold)'"
+        onblur="this.style.borderBottomColor='transparent'">
+      <input type="text" value="${fmtHcp(p.hcp)}" data-raw="${p.hcp}" step="0.1" min="-10" max="54"
+        style="font-size:14px;font-family:'DM Sans',sans-serif;border:none;border-bottom:1px solid transparent;background:transparent;padding:4px 2px;width:100%;text-align:center;color:${p.hcp<0?'var(--gold)':'var(--text)'};font-weight:${p.hcp<0?'700':'400'};"
+        onchange="rosterUpdateHcp('${p.id}', this.value)"
+        onfocus="this.value=this.dataset.raw;this.type='number';this.style.borderBottomColor='var(--gold)';this.style.color='var(--text)';this.style.fontWeight='400';"
+        onblur="this.type='text';this.value=fmtHcp(parseFloat(this.dataset.raw)||0);this.style.borderBottomColor='transparent';this.style.color=parseFloat(this.dataset.raw)<0?'var(--gold)':'var(--text)';this.style.fontWeight=parseFloat(this.dataset.raw)<0?'700':'400';"
+        oninput="this.dataset.raw=this.value;">
+      ${isAdmin() ? `<input type="text" value="${p.ghin||''}" placeholder="GHIN#"
+        style="font-size:12px;font-family:'DM Sans',sans-serif;border:none;border-bottom:1px solid transparent;background:transparent;padding:4px 2px;width:100%;color:var(--text);"
+        onchange="rosterUpdateGhin('${p.id}', this.value)"
+        onfocus="this.style.borderBottomColor='var(--gold)'"
+        onblur="this.style.borderBottomColor='transparent'">` : ''}
+      <button onclick="rosterToggleRegular('${p.id}')" title="${p.regular?'Regular':'Not regular'}"
+        style="background:none;border:none;cursor:pointer;font-size:16px;padding:4px;line-height:1;color:${p.regular?'var(--gold)':'#ccc'};">${p.regular?'★':'☆'}</button>
+      <button onclick="rosterDeletePlayer('${p.id}')"
+        style="background:none;border:none;cursor:pointer;font-size:16px;color:#f87171;padding:4px;line-height:1;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function rosterUpdateName(pid, val) {
+  val = val.trim();
+  if (!val) { toast('Name cannot be empty'); renderPlayers(); return; }
+  const p = playerById(pid);
+  if (p) { p.name = val; rosterMarkDirty(); }
+}
+
+function rosterUpdateHcp(pid, val) {
+  const hcp = parseFloat(val);
+  if (isNaN(hcp) || hcp < -10 || hcp > 54) { toast('Handicap must be −10 to 54'); renderPlayers(); return; }
+  const p = playerById(pid);
+  if (p) { p.hcp = hcp; rosterMarkDirty(); }
+}
+
+function rosterUpdateGhin(pid, val) {
+  const digits = val.trim().replace(/\D/g, '');
+  if (digits.length > 0 && digits.length < 6) { toast('GHIN must be at least 6 digits'); return; }
+  const p = playerById(pid);
+  if (p) { p.ghin = digits; rosterMarkDirty(); }
+}
+
+function rosterToggleRegular(pid) {
+  const p = playerById(pid);
+  if (!p) return;
+  p.regular = !p.regular;
+  scheduleWrite();
+  renderPlayers();
+}
+
+function rosterMarkDirty() {
+  const btn = document.getElementById('roster-save-btn');
+  if (btn) {
+    btn.style.background = 'var(--g800)';
+    btn.style.color = 'var(--gold)';
+    btn.textContent = 'Save Changes';
+  }
+}
+
+function rosterSaveChanges() {
+  scheduleWrite();
+  const btn = document.getElementById('roster-save-btn');
+  const statEl = document.getElementById('roster-save-status');
+  if (btn) {
+    btn.style.background = '#166534';
+    btn.style.color = '#fff';
+    btn.textContent = '✓ Saved';
+    setTimeout(() => {
+      btn.style.background = 'var(--surf3)';
+      btn.style.color = 'var(--muted)';
+      btn.textContent = 'Save Changes';
+    }, 2000);
+  }
+  if (statEl) {
+    statEl.style.display = 'block';
+    statEl.textContent = 'Changes saved';
+    setTimeout(() => { statEl.style.display = 'none'; }, 2000);
+  }
+}
+
+function rosterAddRow() {
+  const id = uid();
+  S.players.push({ id, name: '', ghin: '', hcp: 0 });
+  renderPlayers();
+  const newInput = document.querySelector(`#row-${id} input[type="text"]`);
+  if (newInput) { newInput.focus(); newInput.style.borderBottomColor = 'var(--gold)'; }
+  rosterMarkDirty();
+}
+
+function rosterDeletePlayer(pid) {
+  const p = playerById(pid);
+  if (!p) return;
+  confirmDo('Remove Player', `Remove ${esc(p.name)}?`, () => {
+    S.players = S.players.filter(x => x.id !== pid);
+    scheduleWrite();
+    renderPlayers();
+    toast('Player removed');
+  });
+}
+
+// ═══ GHIN fetch utility ═══
+// Single canonical GHIN fetch used by all refresh functions.
+// Posts ghin numbers to proxy, returns results array. Returns [] on any error.
+// Callers handle their own UI updates and state writes.
+async function ghinFetch(proxy, players) {
+  const withGhin = players.filter(p => p.ghin);
+  if (!withGhin.length || !proxy) return [];
+  try {
+    const r = await fetchWithTimeout(proxy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ghinNumbers: withGhin.map(p => p.ghin) })
+    }, 15000);
+    if (!r.ok) return [];
+    const d = await r.json();
+    return d.results || [];
+  } catch(e) { return []; }
+}
+
+async function rosterRefreshGhin() {
+  const withGhin = S.players.filter(p => p.ghin);
+  if (!withGhin.length) return toast('No players have a GHIN number');
+  if (!S.config.ghinProxyUrl) return toast('No GHIN proxy URL in Settings');
+  const statusEl = document.getElementById('roster-ghin-status');
+  statusEl.style.display = '';
+  statusEl.textContent = `Fetching ${withGhin.length} indexes…`;
+  const results = await ghinFetch(S.config.ghinProxyUrl, withGhin);
+  let updated = 0;
+  results.forEach(res => {
+    const p = S.players.find(x => String(x.ghin) === String(res.ghin));
+    if (p && res.handicap_index != null) { p.hcp = res.handicap_index; updated++; }
+  });
+  scheduleWrite();
+  renderPlayers();
+  statusEl.textContent = updated ? `✓ Updated ${updated} index${updated!==1?'es':''}` : '✗ Fetch failed';
+  setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+}
+
+async function importFromExtras(league) {
+  const statusEl = document.getElementById('importStatus');
+  statusEl.style.display = '';
+  statusEl.textContent = `Loading ${league.toUpperCase()} roster from Extras Manager…`;
+  try {
+    const r = await fetch('https://extras-manager-default-rtdb.firebaseio.com/state.json');
+    const d = await r.json();
+    const players = d?.leagues?.[league]?.players;
+    const arr = !players ? [] : Array.isArray(players) ? players : Object.values(players);
+    if (!arr.length) {
+      statusEl.textContent = `No players found in ${league.toUpperCase()} roster.`;
+      return;
+    }
+    // Only import players not already in the list (match by name, case-insensitive)
+    const existingNames = new Set(S.players.map(p => p.name.toLowerCase()));
+    let imported = 0, skipped = 0;
+    arr.forEach(p => {
+      if (!p || !p.name) return;
+      if (existingNames.has(p.name.toLowerCase())) { skipped++; return; }
+      S.players.push({
+        id:   uid(),
+        name: p.name,
+        ghin: p.ghin || '',
+        hcp:  typeof p.hcp === 'number' ? p.hcp : 0
+      });
+      imported++;
+    });
+    scheduleWrite();
+    renderPlayers();
+    rosterMarkDirty();
+    statusEl.style.color = '#27ae60';
+    statusEl.textContent = `✓ Imported ${imported} player${imported!==1?'s':''}${skipped?` (${skipped} already existed)`:''}`;
+  } catch(e) {
+    statusEl.style.color = '#c0392b';
+    statusEl.textContent = '✗ Import failed: ' + e.message;
+  }
+}
+
+function deletePlayer(pid) { rosterDeletePlayer(pid); }
+// Legacy aliases kept for inline onclick handlers
+function fetchGhin() {}       // placeholder — GHIN fetch handled by rosterRefreshGhin
+function openPlayerModal() {} // placeholder — player edit handled inline in roster
+function savePlayer() {}      // placeholder — player save handled by rosterSaveChanges
+
+// ═══════════════════════════════════════════════
+// HANDICAP MATH  (USGA formula)
+// pointTarget, stablefordPts, strokesOnHole, effectiveHcpRatings.
+// All handicap indexes use course-adjusted values (courseHcp).
+// ═══════════════════════════════════════════════
+// Rating < 50  → genuine 9-hole rating/par → use full index, full rating & par
+// Rating >= 50 → 18-hole rating applied to a 9-hole round →
+//                halve the index AND halve rating & par before applying formula
+//
+// Plus handicaps: stored as negative numbers (e.g. +2.0 = -2.0)
+function calcCourseHcp(hcpIdx, slope, rating, par, adjPct, nineHole) {
+  let idx = hcpIdx;
+  let r   = rating;
+
+  if (nineHole && rating >= 50) {
+    // 18-hole rating entered for a 9-hole course — halve index and rating only
+    // Par is already the actual 9-hole par sum from the scorecard, leave it alone
+    idx = hcpIdx / 2;
+    r   = rating / 2;
+  }
+
+  const raw = idx * (slope / 113) + (r - par);
+  return Math.round(raw * ((adjPct || 100) / 100));
+}
+
+// Point Target: 18 for 9-hole round, 36 for 18-hole round, minus course handicap
+/** Calculate Stableford quota (point target) from course handicap.
+ * Formula: 36 − courseHcp (18-hole) or 18 − courseHcp (9-hole), floored at 0. */
+/** Calculate a player's Stableford quota (target points) from their course handicap. */
+function pointTarget(courseHcp, nineHole) {
+  return (nineHole ? 18 : 36) - courseHcp;
+}
+
+// Strokes received on a specific hole.
+// For a native 9-hole course (nineHole=true), we always mod by 9 so that a CH 8
+// player gets strokes on the 8 hardest of the 9 holes — regardless of whether
+// the course uses a 1–9 or 1–18 rating scale.
+// For 18-hole courses (or playing 9 of 18), mod by 18 as normal.
+// Plus handicaps (negative CH): give up strokes on the hardest holes.
+function strokesOnHole(courseHcp, holeHcpRating, hcpScale) {
+  const mod = hcpScale || 18;
+  if (courseHcp >= 0) {
+    // Normal handicap: strokes on hardest holes first (lowest rating = hardest)
+    const full   = Math.floor(courseHcp / mod);
+    const remain = courseHcp % mod;
+    return full + (holeHcpRating <= remain ? 1 : 0);
+  } else {
+    // Plus handicap: gives strokes on easiest holes first (highest rating = easiest)
+    const absHcp = Math.abs(courseHcp);
+    const full   = Math.floor(absHcp / mod);
+    const remain = absHcp % mod;
+    return -(full + (holeHcpRating > mod - remain ? 1 : 0));
+  }
+}
+
+// For a native 9-hole course using 1–18 scale ratings, convert ratings to 1–9
+// rank order so stroke allocation works correctly across 9 holes.
+// Returns a map of {holeNum → effectiveRating} for the active holes.
+function effectiveHcpRatings(course, activeHoles) {
+  if (!course.nineHole && activeHoles.length === 18) return null; // full 18: use ratings as-is
+  const max = Math.max(...activeHoles.map(h => h.hcpRating||h.hcp||0));
+  if (max <= 9) return null; // already 1–9 scale, no conversion needed
+  // 1–18 scale on a 9-hole course OR playing 9-of-18: re-rank active holes 1–9
+  const sorted = [...activeHoles].sort((a,b) => (a.hcpRating||a.hcp||0) - (b.hcpRating||b.hcp||0));
+  const rankMap = {};
+  sorted.forEach((h, i) => { rankMap[h.num] = i + 1; });
+  return rankMap;
+}
+
+// Half-stroke variant: each stroke is worth 0.5, subtract from gross before comparing
+// Effectively: skinsNet = gross - (strokesOnHole * 0.5), then compare
+// We work in half-strokes to keep integer math: skinsNet2x = gross*2 - strokes
+// But for simplicity we return a decimal; skin comparison still works
+function strokesOnHoleHalf(courseHcp, holeHcpRating, hcpScale) {
+  return strokesOnHole(courseHcp, holeHcpRating, hcpScale) * 0.5;
+}
+
+// Stableford points based on net score vs par
+/** Return Stableford points for a hole given net score vs par.
+ * @param {number} netVsPar - net score minus par (negative = under par)
+ * @param {object} s - settings object with ptsDblEagle/ptsEagle/ptsBirdie/ptsPar/ptsBogey/ptsDbl */
+/** Convert net score vs par to Stableford points per hole. */
+function stablefordPts(netVsPar, s) {
+  if (netVsPar <= -3) return s.ptsDblEagle;
+  if (netVsPar === -2) return s.ptsEagle;
+  if (netVsPar === -1) return s.ptsBirdie;
+  if (netVsPar ===  0) return s.ptsPar;
+  if (netVsPar ===  1) return s.ptsBogey;
+  return s.ptsDbl;
+}
+
+// ═══════════════════════════════════════════════
+// TEAM ASSIGNMENT
+// assignTeams uses ABCD deal order to balance teams by handicap.
+// ═══════════════════════════════════════════════
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function assignTeamsRandom(players) {
+  // Pure random — no A/B tier, just shuffle and pair
+  const shuffled = [...players];
+  shuffle(shuffled);
+  const AsIds = shuffled.filter((_,i)=>i%2===0).map(p=>p.id);
+  const BsIds = shuffled.filter((_,i)=>i%2===1).map(p=>p.id);
+  const teams = [];
+  for (let i=0; i<shuffled.length-1; i+=2) {
+    teams.push({ id:uid(), players:[shuffled[i].id, shuffled[i+1].id] });
+  }
+  if (shuffled.length % 2 === 1) {
+    // Odd: last player is blind, pair with random from existing teams
+    const odd = shuffled[shuffled.length-1];
+    const blindTarget = teams[Math.floor(Math.random()*teams.length)];
+    const partner = shuffled.find(p=>blindTarget.players.includes(p.id) && p.id!==odd.id);
+    teams.push({ id:uid(), players:[odd.id, partner.id], isBlind:true, blindId:odd.id });
+    AsIds.push(odd.id);
+  }
+  return { teams, AsIds, BsIds };
+}
+
+/** Assign players to 2-person teams using ABCD deal order.
+ * Players sorted by HCP; A=low, B=mid-low, C=mid-high, D=high.
+ * Deal order: A picks best Birdie, D picks worst Bogey (offset rotation), B/C fill.
+ * Prevents 2-man teams with odd player count. */
+/** Split players into A/B teams for skins — alternates by Stableford quota rank. */
+function assignTeams(players) {
+  const pairMode = S.pairMode || 'ab';
+  if (pairMode === 'random') return assignTeamsRandom(players);
+  // Sort by courseHcp ascending → lower hcp = better = A
+  const sorted = [...players].sort((a,b) => a.courseHcp - b.courseHcp);
+  const half   = Math.floor(sorted.length / 2);
+  const As     = sorted.slice(0, half);      // better half
+  const Bs     = sorted.slice(half);         // weaker half (always >= As.length)
+
+  // Shuffle within each tier for blind draw
+  shuffle(As); shuffle(Bs);
+
+  const AsIds = As.map(p => p.id);
+  const BsIds = Bs.map(p => p.id);
+  const teams = [];
+
+  if (sorted.length % 2 === 0) {
+    // Even — clean 1A + 1B teams
+    for (let i = 0; i < As.length; i++) {
+      teams.push({ id: uid(), players: [As[i].id, Bs[i].id] });
+    }
+  } else {
+    // Odd — Bs has one more than As (floor split)
+    // Blind-draw one B to fill: they pair with the extra B slot as an A-substitute
+    // To respect A/B: pick a random B as the "blind" — they play as the A on the fill team
+    const blindIdx  = Math.floor(Math.random() * Bs.length);
+    const blindPlayer = Bs[blindIdx];
+    const otherBs   = Bs.filter((_, i) => i !== blindIdx);
+
+    // Pair each shuffled A with a B
+    for (let i = 0; i < As.length; i++) {
+      teams.push({ id: uid(), players: [As[i].id, otherBs[i].id] });
+    }
+    // Fill team: blind B plays as A, paired with the last unpaired B
+    // otherBs has Bs.length-1 items; As.length of them are used in regular teams
+    // so the unpaired one is at index As.length (if it exists)
+    const remainingB = otherBs.length > As.length ? otherBs[As.length] : otherBs[otherBs.length - 1];
+    teams.push({ id: uid(), players: [blindPlayer.id, remainingB.id], isBlind: true, blindId: blindPlayer.id });
+
+    // Mark blind player as A for their fill team role
+    AsIds.push(blindPlayer.id);
+  }
+
+  return { teams, AsIds, BsIds };
+}
+
+// ═══════════════════════════════════════════════
+// GAME TAB
+// Phase flow: Setup → Targets (quota) → Groups → Scores → Results
+// Each phase is a full-screen card; goPhase() controls visibility.
+// ═══════════════════════════════════════════════
+function renderGame() {
+  const choice  = document.getElementById('gameChoice');
+  const setup   = document.getElementById('gameSetup');
+  const active  = document.getElementById('gameActive');
+  if (S.activeGame && !S.activeGame._scoring) {
+    // Show rejoin/abandon choice
+    if (choice) { choice.style.display = ''; showGameChoice(); }
+    if (setup)  setup.style.display  = 'none';
+    if (active) active.style.display = 'none';
+  } else if (S.activeGame && S.activeGame.phase === 'setup') {
+    // Back from active game to player selection — restore selections, keep game alive
+    if (S.activeGame.players && S.activeGame.players.length)
+      window._savedGameSetupIds = S.activeGame.players.map(p => p.id);
+    if (S.activeGame.courseId)
+      window._savedGameSetupCourseId = S.activeGame.courseId;
+    if (choice) choice.style.display = 'none';
+    if (setup)  setup.style.display  = '';
+    if (active) active.style.display = 'none';
+    renderGameSetup();
+  } else if (S.activeGame) {
+    if (choice) choice.style.display = 'none';
+    if (setup)  setup.style.display  = 'none';
+    if (active) active.style.display = 'flex';
+    renderActiveGame();
+  } else {
+    if (choice) choice.style.display = 'none';
+    if (setup)  setup.style.display  = '';
+    if (active) active.style.display = 'none';
+    renderGameSetup();
+  }
+}
+
+/** Show rejoin vs new game choice when an in-progress game exists. */
+function showGameChoice() {
+  const g = S.activeGame;
+  const date = g.date ? new Date(g.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+  const phase = (g.phase||'targets').charAt(0).toUpperCase() + (g.phase||'targets').slice(1);
+  const count = g.players ? g.players.length : 0;
+  const el = document.getElementById('gameChoice');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="card" style="text-align:center;padding:28px 20px;">
+      <div style="font-size:36px;margin-bottom:12px;">⛳</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:6px;">Game In Progress</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">${phase} · ${date}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">${count} players</div>
+      <button class="btn btn-gold btn-full" style="margin-bottom:10px;" onclick="rejoinGame()">⛳ REJOIN GAME</button>
+      <button class="btn btn-danger btn-full" onclick="abandonAndStart()">🗑 START NEW GAME</button>
+    </div>`;
+}
+
+/** Resume the active game — go straight to scoring, skip choice screen. */
+function rejoinGame() {
+  S.activeGame._scoring = true;
+  const choice = document.getElementById('gameChoice');
+  const active = document.getElementById('gameActive');
+  if (choice) choice.style.display = 'none';
+  if (active) active.style.display = 'flex';
+  renderActiveGame();
+}
+
+/** Abandon the in-progress game and start fresh — requires confirmation. */
+function abandonAndStart() {
+  confirmDo('Abandon Game', 'Your in-progress game will be lost. Start a new game?', () => {
+    S.activeGame = null;
+    saveLocal();
+    renderGame();
+  });
+}
+
+function renderGameSetup() {
+  // Courses dropdown
+  const sel = document.getElementById('gsCourse');
+  sel.innerHTML = courseOptionsHTML('');
+
+  // Restore saved course if returning from roster edit, else default to home/last used
+  const savedCourseId = window._savedGameSetupCourseId || null;
+  window._savedGameSetupCourseId = null; // consume once
+  if (savedCourseId && courseById(savedCourseId)) sel.value = savedCourseId;
+  else {
+    const homeCourse = COURSES.find(c => c.homeCourse);
+    if (homeCourse) sel.value = homeCourse.id;
+    else if (S.lastCourseId) sel.value = S.lastCourseId;
+  }
+  updateFrontBackVisibility();
+
+  // Player checklist — regulars at top pre-checked, others below
+  const pl = document.getElementById('gsPlayerList');
+  if (!S.players.length) {
+    pl.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--muted)">No players — add them in the Players tab</div>';
+    return;
+  }
+  const sorted   = S.players.slice().sort((a,b)=>lastNameOf(a.name).localeCompare(lastNameOf(b.name)));
+  const regulars = sorted.filter(p => p.regular);
+  const others   = sorted.filter(p => !p.regular);
+
+  // Restore saved selection if returning from roster edit, else use regulars default
+  const savedIds = window._savedGameSetupIds || null;
+  window._savedGameSetupIds = null; // consume once
+
+  const preCheck = S.gameSettings ? S.gameSettings.preCheckRegulars !== false : true;
+  const isChecked = p => savedIds ? savedIds.includes(p.id) : (p.regular && preCheck);
+  const playerRow = (p, checked) => `
+    <div class="check-item">
+      <input type="checkbox" id="gp_${p.id}" value="${p.id}" ${checked?'checked':''}>
+      <label for="gp_${p.id}">${esc(p.name)}${p.regular?' ★':''} <span class="hcp-tag">${fmtHcp(p.hcp)}</span>${!p.ghin?'<span style="font-size:10px;color:#c0392b;margin-left:4px;">no GHIN</span>':''}</label>
+    </div>`;
+
+  let html = '';
+  if (regulars.length) {
+    html += `<div style="padding:5px 8px;font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.5px;background:#fffbe6;position:sticky;top:0;">★ REGULARS</div>`;
+    html += `<div style="background:#fffbe6;margin-bottom:8px;">${regulars.map(p => playerRow(p, isChecked(p))).join('')}</div>`;
+  }
+  if (others.length) {
+    html += `<div style="padding:5px 8px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;background:var(--surf2);position:sticky;top:0;">${regulars.length ? 'OTHER PLAYERS' : 'PLAYERS'}</div>`;
+    html += `<div>${others.map(p => playerRow(p, isChecked(p))).join('')}</div>`;
+  }
+  pl.innerHTML = html;
+  const btn = document.getElementById('btnSelectAll');
+  if (btn) btn.textContent = 'Select All';
+  requestAnimationFrame(setGameTabHeight);
+}
+
+function selectRegularsOnly() {
+  const checkboxes = [...document.querySelectorAll('#gsPlayerList input[type=checkbox]')];
+  const regularCbs = checkboxes.filter(c => { const p = playerById(c.value); return p && p.regular; });
+  const allRegularsChecked = regularCbs.length > 0 && regularCbs.every(c => c.checked);
+  // Toggle: if all regulars checked → uncheck all; otherwise check only regulars
+  checkboxes.forEach(c => { c.checked = false; });
+  if (!allRegularsChecked) regularCbs.forEach(c => { c.checked = true; });
+}
+
+function toggleSelectAll() {
+  const checkboxes = [...document.querySelectorAll('#gsPlayerList input[type=checkbox]')];
+  if (!checkboxes.length) return;
+  const allChecked = checkboxes.every(c=>c.checked);
+  checkboxes.forEach(c=>c.checked = !allChecked);
+  const btn = document.getElementById('btnSelectAll');
+  if (btn) btn.textContent = allChecked ? 'Select All' : 'Unselect All';
+}
+
+function startGame() {
+  const courseId = document.getElementById('gsCourse').value;
+  if (!courseId) return toast('Select a course');
+  const adjPct = S.skins.hcpAdj || 100; // skins adj lives in Settings
+  const playerIds = [...document.querySelectorAll('#gsPlayerList input:checked')].map(x=>x.value);
+  if (playerIds.length < 2) return toast('Select at least 2 players');
+
+  const course = courseById(courseId);
+  // Determine which holes are in play
+  const is9holeCourse = course.nineHole === true;
+  const nineMode      = window._gsNineMode || 'all';
+  const playingOnly9  = is9holeCourse || nineMode !== 'all';
+  const nineSide      = is9holeCourse ? 'front' : nineMode;
+  const activeHoles   = !playingOnly9
+    ? course.holes   // full 18
+    : (is9holeCourse
+        ? course.holes   // dedicated 9-hole course, all holes
+        : (nineSide === 'back' ? course.holes.slice(9,18) : course.holes.slice(0,9)));
+  const is9hole = activeHoles.length === 9;
+  // Use stored course par for CH calc — not the sum of active holes
+  // (course.par is always the full 18-hole par per USGA formula)
+  const fullPar = course.par || course.holes.reduce((a,h)=>a+h.par, 0);
+  // USGA: when playing 9 of 18, compute full 18-hole CH then halve it
+  // When playing a dedicated 9-hole course, calcCourseHcp handles halving internally
+  const is9ofCourse = is9hole && !course.nineHole; // playing 9 of an 18-hole course
+
+  const gamePlayers = playerIds.map(pid => {
+    const p  = playerById(pid);
+    let ch, skinsCh;
+    const skinsAdj = S.skins.hcpAdj || 100;
+    if (is9ofCourse) {
+      // USGA 9-hole: halve index, slope stays same, halve rating and par
+      const idx9  = p.hcp / 2;
+      const rat9  = course.rating / 2;
+      const par9  = fullPar / 2;
+      ch = Math.round(idx9 * (course.slope / 113) + (rat9 - par9));
+    } else {
+      ch = calcCourseHcp(p.hcp, course.slope, course.rating, fullPar, 100, is9hole);
+    }
+    // Apply skins adj to the rounded CH (not to raw) — e.g. CH8 * 90% = 7.2 → 7
+    skinsCh = Math.floor(ch * skinsAdj / 100);
+    return { id:p.id, name:p.name, hcp:p.hcp, courseHcp:ch, skinsCh, ptTarget:pointTarget(ch, is9hole) };
+  });
+
+  // If returning from setup phase — preserve existing groups and scores
+  const returning = S.activeGame && S.activeGame.phase === 'setup';
+  const existingGroups = returning ? S.activeGame.groups : null;
+  const existingScores = returning ? S.activeGame.scores : null;
+  const existingId     = returning ? S.activeGame.id     : uid();
+
+  // Playing groups: preserve if returning, else start empty
+  const groups = existingGroups || Array.from({ length: Math.ceil(gamePlayers.length / 4) }, () => ({ id: uid(), players: [] }));
+  // Prune groups of players no longer in the game
+  const playerIdSet = new Set(gamePlayers.map(p => p.id));
+  groups.forEach(gr => { gr.players = gr.players.filter(id => playerIdSet.has(id)); });
+
+  S.activeGame = {
+    id: existingId,
+    date: returning ? S.activeGame.date : Date.now(),
+    courseId,
+    nineSide,
+    activeHoleCount: activeHoles.length,
+    players: gamePlayers,
+    groups,
+    teams: returning ? S.activeGame.teams : null,
+    AsIds: returning ? S.activeGame.AsIds : [],
+    BsIds: returning ? S.activeGame.BsIds : [],
+    scores: existingScores || {},
+    results: returning ? S.activeGame.results : null,
+    phase: 'targets',
+    _scoring: true
+  };
+
+  S.lastCourseId = courseId;
+  saveLocal();
+  renderGame();
+}
+
+/** Navigate to a game phase: "targets" | "groups" | "scores" | "results" */
+function goPhase(phase) {
+  const g = S.activeGame;
+  if (!g) return;
+
+  if (phase === 'results') {
+    // Only generate teams the first time — preserve them on return visits
+    if (!g.teams || !g.teams.length) {
+      const { teams, AsIds, BsIds } = assignTeams(g.players);
+      g.teams = teams; g.AsIds = AsIds; g.BsIds = BsIds;
+    }
+    const course = courseById(g.courseId);
+    calcResults(course);
+  }
+
+  g.phase = phase;
+  // Local-only during round — Firebase write happens at results time
+  saveLocal();
+  renderActiveGame();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function renderActiveGame() {
+  const g      = S.activeGame;
+  const course = courseById(g.courseId);
+
+  // Guard: course or players not yet loaded — show loading state and keep retrying
+  if (!course || !g.players || !g.players.length) {
+    const gameEl = document.getElementById('gameActive');
+    if (gameEl) gameEl.innerHTML = '<div class="card" style="text-align:center;padding:32px;color:var(--muted);">Loading game data…</div>';
+    let _retryCount = 0;
+    const retryActive = () => {
+      if (!S.activeGame) return;
+      const c = courseById(S.activeGame.courseId);
+      if (c && S.activeGame.players && S.activeGame.players.length) {
+        renderGame();
+      } else if (++_retryCount < 10) {
+        setTimeout(retryActive, 800);
+      } else {
+        const gameEl = document.getElementById('gameActive');
+        if (gameEl) gameEl.innerHTML = '<div class="card" style="text-align:center;padding:32px;color:var(--red);">No connection — reload when online.</div>';
+      }
+    };
+    setTimeout(retryActive, 800);
+    return;
+  }
+
+  const phase = g.phase || 'targets';
+
+  // Determine active holes
+  const is9hole     = g.activeHoleCount ? g.activeHoleCount === 9 : course.nineHole === true;
+  const activeHoles = g.nineSide === 'all' ? course.holes
+    : g.nineSide === 'back' ? course.holes.slice(9,18)
+    : g.nineSide === 'front' ? course.holes.slice(0,9)
+    : course.holes; // dedicated 9-hole course — all holes
+
+  // ═══ Always render info card (phase 1) ═══
+  const nineLabel = activeHoles.length === 9
+    ? ` (${is9hole ? '9-Hole' : g.nineSide === 'back' ? 'Back 9' : g.nineSide === 'all' ? '18 Holes' : 'Front 9'})` : '';
+  const gInfoTitle = document.getElementById('gInfoTitle');
+  if (gInfoTitle) gInfoTitle.textContent = 'Quotas';
+  const gameCourseSelect = document.getElementById('gameCourseSelect');
+  if (gameCourseSelect) gameCourseSelect.innerHTML = `<option value="__edit__">⚙ Edit Course Setup</option>` + courseOptionsHTML(g.courseId);
+  // Show 9-hole picker only for 18-hole courses
+  const ninePickerEl = document.getElementById('gameNinePicker');
+  if (ninePickerEl) {
+    const show18holes = course.holes.length > 9;
+    ninePickerEl.style.display = show18holes ? 'flex' : 'none';
+    if (show18holes) {
+      const ns = g.nineSide || 'all';
+      const gn18   = document.getElementById('gn18');
+      const gnFront = document.getElementById('gnFront');
+      const gnBack  = document.getElementById('gnBack');
+      if (gn18)    gn18.classList.toggle('active',    ns === 'all');
+      if (gnFront) gnFront.classList.toggle('active', ns === 'front');
+      if (gnBack)  gnBack.classList.toggle('active',  ns === 'back');
+    }
+  }
+
+  const skinsAdj      = S.skins.hcpAdj || 100;
+  const strokeOffBest = S.skins.strokeOffBest === true;
+  // Ensure skinsCh is set — may be missing on games started before v6.7
+  const course2 = courseById(g.courseId);
+  const is9ofCourse2 = g.activeHoleCount === 9 && course2 && !course2.nineHole;
+  // Always recalculate skinsCh from rounded courseHcp — adj may have changed in Settings
+  g.players.forEach(p => {
+    p.skinsCh = Math.floor(p.courseHcp * skinsAdj / 100);
+  });
+  const lowestSkinsCh = strokeOffBest ? Math.min(...g.players.map(p => p.skinsCh)) : null;
+  const sorted        = [...g.players].sort((a,b) => a.courseHcp - b.courseHcp);
+  const gInfoBodyEl = document.getElementById('gInfoBody');
+  if (gInfoBodyEl) gInfoBodyEl.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="border-bottom:2px solid var(--surf3);">
+          <th style="text-align:left;padding:5px 8px;font-size:11px;color:var(--muted);font-weight:600;">PLAYER</th>
+          <th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">INDEX</th>
+          <th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">CH</th>
+          <th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">QUOTA</th>
+          <th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">${strokeOffBest ? 'SKINS NET' : 'SKINS CH'}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map(p => {
+          const effectiveSkinsCh = strokeOffBest ? Math.max(0, p.skinsCh - lowestSkinsCh) : p.skinsCh;
+          const skinsLabel = strokeOffBest
+            ? `${effectiveSkinsCh} <span style="color:var(--muted);font-size:10px;">(${p.skinsCh}−${lowestSkinsCh})</span>`
+            : p.skinsCh;
+          return `<tr style="border-bottom:1px solid var(--surf3);">
+            <td style="padding:7px 8px;font-weight:600;">${esc(p.name)}</td>
+            <td style="padding:7px 4px;text-align:center;color:var(--muted);">${fmtHcp(p.hcp)}</td>
+            <td style="padding:7px 4px;text-align:center;font-weight:700;">${p.courseHcp}</td>
+            <td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--gold);font-size:15px;">${p.ptTarget}</td>
+            <td style="padding:7px 4px;text-align:center;color:var(--muted);">${skinsLabel}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    ${skinsAdj !== 100 || strokeOffBest ? `<div style="font-size:10px;color:var(--muted);margin-top:6px;">${[skinsAdj!==100?`Skins adj: ${skinsAdj}%`:'', strokeOffBest?'Stroke off best player':''].filter(Boolean).join(' · ')}</div>` : ''}`;
+
+  // Show only the active phase card
+  document.getElementById('gameInfoCard').style.display  = phase === 'targets' ? 'flex' : 'none';
+  document.getElementById('groupsCard').style.display    = phase === 'groups'  ? 'flex' : 'none';
+  document.getElementById('scoreCard').style.display     = phase === 'scores'  ? 'flex' : 'none';
+  document.getElementById('resultsCard').style.display   = phase === 'results' ? 'flex' : 'none';
+
+  // ═══ Phase 2: Groups ═══
+  if (phase === 'groups') renderGroups();
+
+  // ═══ Phase 3: Scores ═══
+  if (phase === 'scores') renderScoreEntry(course, activeHoles);
+
+  // ═══ Phase 4: Results ═══
+  if (phase === 'results') {
+    if (!g.results) {
+      // Recalculate results on rejoin if not yet stored
+      if (!g.teams || !g.teams.length) {
+        const { teams, AsIds, BsIds } = assignTeams(g.players);
+        g.teams = teams; g.AsIds = AsIds; g.BsIds = BsIds;
+      }
+      calcResults(course);
+    }
+    if (g.results) renderResultsView();
+  }
+}
+
+
+
+function addGroup() {
+  const g = S.activeGame;
+  g.groups.push({ id: uid(), players: [] });
+  saveLocal();
+  renderGroups();
+}
+
+function removeLastGroup() {
+  const g = S.activeGame;
+  if (g.groups.length <= 1) return toast('Need at least one group');
+  const last = g.groups[g.groups.length - 1];
+  // Move any players back to unassigned before removing
+  g.groups.pop();
+  saveLocal();
+  renderGroups();
+}
+
+function goBackToSetup() {
+  // Keep activeGame intact — just go back to player selection phase
+  // Groups, scores, and all state are preserved
+  if (S.activeGame) {
+    S.activeGame.phase = 'setup';
+    saveLocal();
+  }
+  renderGame();
+}
+
+let _selectedGroup = 0;
+/** Add player to _selectedGroup, or remove if already in it. Clears from other groups first. */
+function togglePlayerGroup(pid) {
+  const g = S.activeGame;
+  const grp = g.groups[_selectedGroup];
+  if (grp.players.includes(pid)) {
+    grp.players = grp.players.filter(id => id !== pid);
+  } else {
+    // Remove from any other group first
+    g.groups.forEach(gr => { gr.players = gr.players.filter(id => id !== pid); });
+    grp.players.push(pid);
+    // Auto-advance to next group after 4 players assigned
+    if (grp.players.length >= 4 && _selectedGroup < g.groups.length - 1) {
+      _selectedGroup++;
+    }
+  }
+  saveLocal();
+  renderGroups();
+}
+/** Render the group assignment UI. _selectedGroup tracks the active group pill. */
+function renderGroups() {
+  const g = S.activeGame;
+  const groupColors  = ['#e8f5e9','#e3f2fd','#fff9e6','#fce4ec','#f3e5f5','#e0f7fa'];
+  const borderColors = ['#27ae60','#2471a3','#c9a227','#e91e63','#9c27b0','#00bcd4'];
+  g.groups.forEach(gr => { if (!gr.players) gr.players = []; });
+  if (_selectedGroup >= g.groups.length) _selectedGroup = 0;
+  const grp = g.groups[_selectedGroup];
+
+  // Group tab pills
+  const groupTabsEl = document.getElementById('groupTabsRow'); if (groupTabsEl) groupTabsEl.innerHTML = g.groups.map((gr, gi) => `
+    <button onclick="_selectedGroup=${gi};renderGroups();" style="
+      padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;
+      border:2px solid ${borderColors[gi%6]};
+      background:${gi===_selectedGroup ? borderColors[gi%6] : '#fff'};
+      color:${gi===_selectedGroup ? '#fff' : borderColors[gi%6]};
+      font-family:'DM Sans',sans-serif;
+    ">Group ${gi+1} <span style="font-weight:400;font-size:10px;">(${gr.players.length})</span></button>
+  `).join('');
+
+  // Player list
+  const assignedToSelected = new Set(grp.players);
+  const allAssigned = new Set(g.groups.flatMap(gr => gr.players));
+
+  const allDone = g.players.every(p => allAssigned.has(p.id));
+
+  const groupsBodyEl = document.getElementById('groupsBody'); if (groupsBodyEl) groupsBodyEl.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:8px;">
+      ${allDone ? '<span style="color:#27ae60;">✓ All players assigned</span>' : 'TAP PLAYERS TO ADD TO GROUP ' + (_selectedGroup+1)}
+    </div>
+    ${g.players.map(p => {
+      const inThis  = assignedToSelected.has(p.id);
+      const inOther = !inThis && allAssigned.has(p.id);
+      const otherGi = inOther ? g.groups.findIndex(gr => gr.players.includes(p.id)) : -1;
+      return `<div onclick="togglePlayerGroup('${p.id}')" style="
+        display:flex;align-items:center;justify-content:space-between;
+        padding:9px 12px;margin-bottom:5px;border-radius:8px;cursor:pointer;
+        background:${inThis ? groupColors[_selectedGroup%6] : '#fff'};
+        border:1.5px solid ${inThis ? borderColors[_selectedGroup%6] : 'var(--surf3)'};
+        opacity:${inOther ? '0.45' : '1'};
+      ">
+        <span style="font-weight:600;font-size:13px;">${esc(p.name)}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);">CH${p.courseHcp}</span>
+          ${inThis  ? `<span style="color:${borderColors[_selectedGroup%6]};font-weight:700;font-size:15px;">✓</span>` : ''}
+          ${inOther ? `<span style="font-size:10px;color:var(--muted);">Grp ${otherGi+1}</span>` : ''}
+        </span>
+      </div>`;
+    }).join('')}
+  `;
+}
+let _scoreInputCache = null;
+/** Render the score entry table for all groups.
+ * @param {object} course - the active course object
+ * @param {array} activeHoles - subset of holes being played */
+function renderScoreEntry(course, activeHoles) {
+  _scoreInputCache = null; // invalidate cache on each render
+  const g          = S.activeGame;
+
+  // Guard: if players not yet loaded (fbLoad still in flight), show loading state
+  if (!g.players || !g.players.length) {
+    const _seb=document.getElementById('scoreEntryBody'); if(_seb) _seb.innerHTML =
+      '<div style="padding:32px;text-align:center;color:var(--muted);">Loading players…</div>';
+    let _scoreRetry = 0;
+    const retry = () => {
+      if (S.activeGame && S.activeGame.players && S.activeGame.players.length) {
+        const c = courseById(S.activeGame.courseId);
+        const ah = c ? c.holes : [];
+        renderScoreEntry(c, ah);
+      } else if (++_scoreRetry < 10) {
+        setTimeout(retry, 500);
+      } else {
+        const _seb=document.getElementById('scoreEntryBody'); if(_seb) _seb.innerHTML =
+          '<div style="padding:32px;text-align:center;color:var(--red);">No connection — reload when online.</div>';
+      }
+    };
+    setTimeout(retry, 500);
+    return;
+  }
+
+  const groups     = g.groups || [{ id:'all', players: g.players.map(p=>p.id) }];
+  const rowA       = activeHoles.slice(0, 9);
+  const rowB       = activeHoles.slice(9, 18);
+  const hcpScale   = activeHoles.length; // 9 for 9-hole or 9-of-18, 18 for full course
+  const rankMap    = effectiveHcpRatings(course, activeHoles);
+  function hcpRating(h) { return rankMap ? rankMap[h.num] : (h.hcpRating||h.hcp||0); }
+  const strokeOffBest  = S.skins.strokeOffBest === true;
+  const skinsAdjLocal  = S.skins.hcpAdj || 100;
+  const lowestSkinsCh  = strokeOffBest ? Math.min(...g.players.map(p => p.skinsCh ?? p.courseHcp)) : null;
+  // Always recalculate skinsCh from rounded courseHcp
+  g.players.forEach(p => {
+    p.skinsCh = Math.floor(p.courseHcp * skinsAdjLocal / 100);
+  });
+  const groupColors  = ['#e8f5e9','#e3f2fd','#fff9e6','#fce4ec','#f3e5f5','#e0f7fa'];
+  const borderColors = ['#27ae60','#2471a3','#c9a227','#e91e63','#9c27b0','#00bcd4'];
+
+  // Shared hole+par header rows for a block of holes
+  function headerRows(holes, label, totalLabel) {
+    const parTotal = holes.reduce((a,h)=>a+h.par,0);
+    const cols = `80px repeat(${holes.length},1fr) 36px`;
+    return `<div class="hole-grid" style="grid-template-columns:${cols};">
+        <div class="hole-cell" style="background:var(--g800);color:rgba(255,255,255,.5);font-size:9px;font-weight:700;">${label}</div>
+        ${holes.map(h=>`<div class="hole-cell" style="background:var(--g800);color:var(--gold);font-size:10px;font-weight:700;">${h.num}</div>`).join('')}
+        <div class="hole-cell" style="background:var(--g800);color:rgba(255,255,255,.5);font-size:9px;font-weight:700;">${totalLabel}</div>
+      </div>
+      <div class="hole-grid" style="grid-template-columns:${cols};">
+        <div class="hole-cell header">Par</div>
+        ${holes.map(h=>`<div class="hole-cell par-cell">${h.par}</div>`).join('')}
+        <div class="hole-cell total">${parTotal}</div>
+      </div>
+      <div class="hole-grid" style="grid-template-columns:${cols};">
+        <div class="hole-cell header" style="color:var(--muted);">HCP</div>
+        ${holes.map(h=>`<div class="hole-cell" style="font-size:10px;color:var(--muted);">${rankMap?rankMap[h.num]:(h.hcpRating||h.hcp||'')}</div>`).join('')}
+        <div class="hole-cell"></div>
+      </div>`;
+  }
+
+  // One score row for a player across a set of holes
+  function scoreRow(gp, holes, idSuffix) {
+    const sc    = g.scores[gp.id] || {};
+    const total = holes.reduce((a,h)=>a+(parseInt(sc[h.num])||0),0);
+    const cells = holes.map(h => {
+      const skinsChForDots = strokeOffBest
+        ? Math.max(0, (gp.skinsCh ?? gp.courseHcp) - lowestSkinsCh)
+        : (gp.skinsCh ?? gp.courseHcp);
+      const strokes     = strokesOnHole(skinsChForDots, hcpRating(h), hcpScale);
+      const getsStroke  = strokes > 0;
+      const givesStroke = strokes < 0;
+      // Red bg = gets a stroke (favorable), subtle indicator
+      const cellBg = getsStroke ? 'background:#fde8e8;' : givesStroke ? 'background:#e8f4ec;' : '';
+      const dot    = getsStroke
+        ? `<span style="position:absolute;top:1px;right:2px;color:#c0392b;font-size:8px;line-height:1;">${'•'.repeat(Math.min(strokes,3))}</span>`
+        : givesStroke
+        ? `<span style="position:absolute;top:1px;right:2px;color:#27ae60;font-size:8px;line-height:1;">${'•'.repeat(Math.min(Math.abs(strokes),3))}</span>`
+        : '';
+      return `<div class="hole-cell" style="position:relative;padding:0;${cellBg}">
+        <input type="number" min="1" max="9" value="${sc[h.num]!=null?sc[h.num]:''}"
+          data-pid="${gp.id}" data-hole="${h.num}"
+          inputmode="numeric" oninput="updateScore(this)"
+          style="width:100%;border:none;font-size:12px;text-align:center;padding:5px 1px;background:transparent;font-family:'DM Sans',sans-serif;outline:none;">
+        ${dot}
+      </div>`;
+    }).join('');
+    const cols = `80px repeat(${holes.length},1fr) 36px`;
+    const nameParts = gp.name.trim().split(' ');
+    // If single word ≤10 chars: show as-is. If longer: truncate at 10.
+    // If two words: wrap between them for neat display.
+    const displayName = nameParts.length > 1
+      ? nameParts.join('<br>')
+      : esc(gp.name);
+    return `<div class="hole-grid" style="grid-template-columns:${cols};">
+      <div class="hole-cell header" style="text-align:left;padding-left:4px;font-size:10px;font-weight:700;white-space:normal;overflow:hidden;line-height:1.2;" title="${esc(gp.name)}">
+        ${nameParts.length > 1 ? nameParts.map(esc).join('<br>') : esc(gp.name)}<br><span style="color:var(--muted);font-weight:400;font-size:9px;">CH${gp.courseHcp}${(gp.skinsCh??gp.courseHcp)!==gp.courseHcp?` · SK${gp.skinsCh??gp.courseHcp}`:''}</span>
+      </div>
+      ${cells}
+      <div class="hole-cell total" id="${idSuffix}_${gp.id}" style="font-size:11px;">${total||''}</div>
+    </div>`;
+  }
+
+  // If no players assigned to any group, show all players ungrouped
+  const totalAssigned = (groups||[]).reduce((a, gr) => a + (gr.players||[]).length, 0);
+  const effectiveGroups = totalAssigned > 0 ? groups : [{ id:'all', players: g.players.map(p=>p.id) }];
+
+  let html = '';
+  effectiveGroups.forEach((grp, gi) => {
+    let grpPlayers = (grp.players||[]).map(pid => g.players.find(p=>p.id===pid)).filter(Boolean);
+    // Fallback: if all player lookups failed (ID mismatch), use all players in one group
+    if (!grpPlayers.length && gi === 0) grpPlayers = g.players;
+
+    html += `<div style="margin-bottom:20px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--g800);
+        padding:8px 12px;background:${groupColors[gi%6]};border-left:4px solid ${borderColors[gi%6]};
+        border-radius:6px 6px 0 0;">Group ${gi+1}</div>
+      <div style="border:1px solid var(--surf3);border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">`;
+
+    // FRONT 9 / ONLY BLOCK
+    html += `<div>`;
+    html += headerRows(rowA, rowB.length ? 'FRONT' : 'HOLES', rowB.length ? 'OUT' : 'TOT');
+    grpPlayers.forEach((gp, pi) => {
+      const bt = pi > 0 ? 'border-top:1px solid var(--surf3);' : '';
+      html += `<div style="${bt}">` + scoreRow(gp, rowA, 'rowA') + '</div>';
+    });
+    html += '</div></div>';
+
+    // BACK 9 (18-hole only)
+    if (rowB.length) {
+      html += `<div style="border-top:2px solid var(--surf3);">`;
+      html += headerRows(rowB, 'BACK', 'IN');
+      grpPlayers.forEach((gp, pi) => {
+        const bt = pi > 0 ? 'border-top:1px solid var(--surf3);' : '';
+        html += `<div style="${bt}">` + scoreRow(gp, rowB, 'rowB') + '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // TOTALS
+    html += `<div style="border-top:2px solid var(--surf3);padding:6px 10px;">`;
+    grpPlayers.forEach(gp => {
+      const sc  = g.scores[gp.id] || {};
+      const tot = activeHoles.reduce((a,h)=>a+(parseInt(sc[h.num])||0),0);
+      html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:1px 0;">
+        <span style="font-weight:600;">${esc(gp.name)}</span>
+        <span style="font-weight:700;color:var(--g800);">Total: <span id="tot_${gp.id}">${tot||'—'}</span></span>
+      </div>`;
+    });
+    html += '</div>';
+
+    html += '</div></div>'; // close group
+  });
+
+  // Last resort: if nothing rendered (all group lookups failed), show all players ungrouped
+  if (!html) {
+    const allPlayers = g.players;
+    html = `<div style="margin-bottom:20px;"><div style="border:1px solid var(--surf3);border-radius:8px;overflow:hidden;">`;
+    html += `<div>` + headerRows(rowA, rowB.length ? 'FRONT' : 'HOLES', rowB.length ? 'OUT' : 'TOT');
+    allPlayers.forEach((gp, pi) => {
+      const bt = pi > 0 ? 'border-top:1px solid var(--surf3);' : '';
+      html += `<div style="${bt}">` + scoreRow(gp, rowA, 'rowA') + '</div>';
+    });
+    html += '</div>';
+    if (rowB.length) {
+      html += `<div style="border-top:2px solid var(--surf3);">` + headerRows(rowB, 'BACK', 'IN');
+      allPlayers.forEach((gp, pi) => {
+        const bt = pi > 0 ? 'border-top:1px solid var(--surf3);' : '';
+        html += `<div style="${bt}">` + scoreRow(gp, rowB, 'rowB') + '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  const _seb=document.getElementById('scoreEntryBody'); if(_seb) _seb.innerHTML = html;
+  _scoreInputCache = Array.from(document.querySelectorAll('#scoreEntryBody input[type="number"]'));
+}
+
+function updateScore(input) {
+  const pid  = input.dataset.pid;
+  const hole = parseInt(input.dataset.hole); // 1-based hole number
+  const val  = parseInt(input.value);
+  const g    = S.activeGame;
+  if (!g.scores[pid]) g.scores[pid] = {};
+  g.scores[pid][hole] = isNaN(val) || val < 1 ? null : Math.min(val, 9);
+
+  // Recompute totals from active holes
+  const course      = courseById(g.courseId);
+  const is9hole     = g.activeHoleCount ? g.activeHoleCount === 9 : course.nineHole===true;
+  const activeHoles = g.nineSide==='all' ? course.holes : g.nineSide==='back' ? course.holes.slice(9,18) : g.nineSide==='front' ? course.holes.slice(0,9) : course.holes;
+  const rowA = activeHoles.slice(0,9);
+  const rowB = activeHoles.slice(9,18);
+  const sc   = g.scores[pid]||{};
+
+  const rowATotal = rowA.reduce((a,h)=>a+(parseInt(sc[h.num])||0),0);
+  const rowBTotal = rowB.reduce((a,h)=>a+(parseInt(sc[h.num])||0),0);
+
+  const elA = document.getElementById('rowA_'+pid);
+  const elB = document.getElementById('rowB_'+pid);
+  if (elA) elA.textContent = rowATotal||'';
+  if (elB) elB.textContent = rowBTotal||'';
+  const totEl=document.getElementById('tot_'+pid); if(totEl) totEl.textContent=(rowATotal+rowBTotal)||'—';
+  saveLocal(); // local-only during scoring — Firebase write happens at end of round
+
+  // Auto-advance to next hole input
+  if (!isNaN(val) && val >= 1) {
+    const allInputs = _scoreInputCache || Array.from(document.querySelectorAll('#scoreEntryBody input[type="number"]'));
+    const idx = allInputs.indexOf(input);
+    if (idx >= 0 && idx < allInputs.length - 1) {
+      setTimeout(() => { allInputs[idx+1].focus(); allInputs[idx+1].select(); }, 50);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RESULTS CALCULATION
+// computeResults() is the core scoring engine (Stableford + Skins).
+// renderResultsView() delegates to renderPointsLeaderboard() and renderTeamResults().
+// ═══════════════════════════════════════════════
+/** Trigger results computation and persist. Shows warning if any scores are missing. */
+function calcResults(course) {
+  const g = S.activeGame;
+  course   = course || courseById(g.courseId);
+  if (!course) return;
+
+  const missing = g.players.filter(gp => {
+    const sc = g.scores[gp.id];
+    return !sc || Object.keys(sc).length === 0;
+  });
+  if (missing.length) toast('⚠️ Some scores missing — partial results shown', 3000);
+
+  try {
+    g.results = computeResults(g, course, S.settings);
+    saveLocal(); // results are local during round — Firebase write happens at save time
+  } catch(e) {
+    toast('⚠️ Error calculating results — try again or reload.', TOAST_ERR_MS);
+    console.error('computeResults failed:', e);
+  }
+}
+
+/** Core scoring engine. Computes per-player, per-hole Stableford points and skins.
+ * @param {object} g - active game object (players, scores, groups, teams)
+ * @param {object} course - course object with holes array (par, hcpRating)
+ * @param {object} settings - Stableford point values
+ * @returns {object} { playerData, grossSkins, netSkins, grossTally, netTally } */
+function computeResults(g, course, settings) {
+  const is9hole      = g.activeHoleCount ? g.activeHoleCount === 9 : course.nineHole === true;
+  const activeHoles  = g.nineSide === 'all' ? course.holes
+    : g.nineSide === 'back' ? course.holes.slice(9,18)
+    : g.nineSide === 'front' ? course.holes.slice(0,9)
+    : course.holes; // dedicated 9-hole course
+  const halfStroke   = S.skins.halfStroke === true;
+  const strokeOffBest = S.skins.strokeOffBest === true;
+  const hcpScale     = activeHoles.length;
+  const rankMap      = effectiveHcpRatings(course, activeHoles);
+
+  function hcpRating(h) { return rankMap ? rankMap[h.num] : (h.hcpRating||h.hcp||0); }
+
+  // When strokeOffBest: everyone strokes off the lowest skinsCh in the game
+  const lowestSkinsCh = strokeOffBest
+    ? Math.min(...g.players.map(p => p.skinsCh ?? p.courseHcp))
+    : null;
+
+  // Per-player hole-by-hole data
+  const playerData = g.players.map(gp => {
+    const scMap   = g.scores[gp.id] || {};
+
+    // Effective skins CH for this player
+    const effectiveSkinsCh = strokeOffBest
+      ? Math.max(0, (gp.skinsCh ?? gp.courseHcp) - lowestSkinsCh)
+      : (gp.skinsCh ?? gp.courseHcp);
+
+    const holeData = activeHoles.map(h => {
+      const gross      = parseInt(scMap[h.num]) || 0;
+      const strokes    = strokesOnHole(gp.courseHcp, hcpRating(h), hcpScale);
+      const net        = gross > 0 ? gross - strokes : 0;
+      const grossVsPar = gross > 0 ? gross - h.par : 999;  // Stableford uses GROSS score
+      const netVsPar   = gross > 0 ? net - h.par : 999;    // kept for reference
+      const pts        = gross > 0 ? stablefordPts(grossVsPar, settings) : 0;
+
+      const skinsStrokes = halfStroke
+        ? strokesOnHoleHalf(effectiveSkinsCh, hcpRating(h), hcpScale)
+        : strokesOnHole(effectiveSkinsCh, hcpRating(h), hcpScale);
+      // skinsNet: capped at gross — a net score can never beat a better gross score
+      // e.g. gross 4 with 2 strokes = net 2, but gross 3 (birdie) should still win
+      const rawSkinsNet  = gross > 0 ? gross - skinsStrokes : 0;
+      const skinsNet     = gross > 0 ? Math.max(rawSkinsNet, gross - Math.floor(skinsStrokes)) : 0;
+      // Use integer net for comparison so fractional strokes don't produce impossible nets:
+      // With ½-stroke: 2 strokes → 1 effective stroke → net floor. Gross 4, 2 strokes, ½ → net 3, not 3.0 tie with a gross 3.
+      // The correct approach: skinsNet = gross - floor(skinsStrokes), so ½-stroke never lets
+      // a worse gross beat a better gross. Only full strokes count toward skins net.
+      const skinsNetCmp  = gross > 0 ? gross - Math.floor(skinsStrokes) : 0;
+
+      return { holeNum: h.num, par: h.par, hcpRating: h.hcpRating||h.hcp||0, gross, strokes, net, netVsPar, pts, skinsNet, skinsNetCmp, skinsStrokes };
+    });
+    const totalGross = holeData.reduce((a,h)=>a+(h.gross||0), 0);
+    const totalNet   = holeData.reduce((a,h)=>a+(h.net||0),   0);
+    const totalPts   = holeData.reduce((a,h)=>a+h.pts,        0);
+    return { ...gp, holeData, totalGross, totalNet, totalPts };
+  });
+
+  // SKINS helper: given array of {id,name,score}, returns winner id or null (tied/no scores)
+  function skinWinner(entries) {
+    const valid = entries.filter(e=>e.score>0);
+    if (!valid.length) return null;
+    const min = Math.min(...valid.map(e=>e.score));
+    const tops = valid.filter(e=>e.score===min);
+    return tops.length===1 ? tops[0] : null;
+  }
+  function isTied(entries) {
+    const valid = entries.filter(e=>e.score>0);
+    if (valid.length<2) return false;
+    const min = Math.min(...valid.map(e=>e.score));
+    return valid.filter(e=>e.score===min).length>1;
+  }
+
+  // Gross skins (all players, individual, active holes only)
+  const grossSkins = activeHoles.map((_,i) => {
+    const entries = playerData.map(p=>({id:p.id, name:p.name, score:p.holeData[i] ? p.holeData[i].gross : 0}));
+    return skinWinner(entries);
+  });
+  const grossTied = activeHoles.map((_,i)=>{
+    const entries = playerData.map(p=>({id:p.id, score:p.holeData[i] ? p.holeData[i].gross : 0}));
+    return isTied(entries);
+  });
+
+  // Net skins — use skinsNetCmp (floor strokes) so ½-stroke never lets a worse gross beat a better gross
+  const netSkins = activeHoles.map((_,i) => {
+    const entries = playerData
+      .filter(p=>p.holeData[i] && p.holeData[i].gross>0)
+      .map(p=>({id:p.id, name:p.name, score:p.holeData[i].skinsNetCmp}));
+    return skinWinner(entries);
+  });
+  const netTied = activeHoles.map((_,i)=>{
+    const entries = playerData.filter(p=>p.holeData[i] && p.holeData[i].gross>0).map(p=>({id:p.id, score:p.holeData[i].skinsNetCmp}));
+    return isTied(entries);
+  });
+
+  // Tally
+  const grossTally = {}, netTally = {};
+  g.players.forEach(p=>{ grossTally[p.id]=0; netTally[p.id]=0; });
+  grossSkins.forEach(w=>{ if(w) grossTally[w.id]++; });
+  netSkins.forEach(w=>{   if(w) netTally[w.id]++;   });
+
+  return { playerData, grossSkins, grossTied, netSkins, netTied, grossTally, netTally };
+}
+
+function renderPointsLeaderboard(r) {
+  const g = S.activeGame;
+  const sorted = [...r.playerData].sort((a,b) => b.totalPts - a.totalPts);
+  let html = '<div class="section-label">Points</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">';
+  html += '<thead><tr style="border-bottom:2px solid var(--surf3);">';
+  html += '<th style="text-align:left;padding:5px 8px;font-size:11px;color:var(--muted);font-weight:600;">#</th>';
+  html += '<th style="text-align:left;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">PLAYER</th>';
+  html += '<th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">PTS</th>';
+  html += '<th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">QUOTA</th>';
+  html += '<th style="text-align:center;padding:5px 4px;font-size:11px;color:var(--muted);font-weight:600;">+/−</th>';
+  html += '</tr></thead><tbody>';
+  sorted.forEach((p, i) => {
+    const vs    = p.totalGross ? p.totalPts - p.ptTarget : null;
+    const vsStr = vs !== null ? (vs >= 0 ? '+' : '') + vs : '—';
+    const vsClr = vs === null ? 'var(--muted)' : vs >= 0 ? '#27ae60' : '#c0392b';
+    html += `<tr style="border-bottom:1px solid var(--surf3);">
+      <td style="padding:6px 8px;color:var(--muted);font-size:12px;">${i===0?'🥇':i+1}</td>
+      <td style="padding:6px 4px;font-weight:${i===0?700:600};">${esc(p.name)}</td>
+      <td style="padding:6px 4px;text-align:center;font-weight:700;color:var(--gold);font-size:15px;">${p.totalPts}</td>
+      <td style="padding:6px 4px;text-align:center;color:var(--muted);">${p.ptTarget}</td>
+      <td style="padding:6px 4px;text-align:center;font-weight:700;color:${vsClr};">${vsStr}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderTeamResults(r, g) {
+  const teamTotals = g.teams.map((team, ti) => {
+    const teamPlayers = team.players.map(pid => r.playerData.find(p => p.id === pid)).filter(Boolean);
+    const teamPts    = teamPlayers.reduce((a, p) => a + p.totalPts, 0);
+    const teamTarget = teamPlayers.reduce((a, p) => a + p.ptTarget, 0);
+    const teamVs     = teamPts - teamTarget;
+    // Build team name from last names
+    const teamName   = teamPlayers.map(p => lastNameOf(p.name)).join(' / ');
+    return { ti, teamPlayers, teamPts, teamTarget, teamVs, teamName };
+  });
+  // Sort winning team first
+  teamTotals.sort((a, b) => b.teamVs - a.teamVs);
+  const maxVs  = Math.max(...teamTotals.map(t => t.teamVs));
+  const isTied = teamTotals.filter(t => t.teamVs === maxVs).length > 1;
+  let html = '<div class="section-label">Team Results</div>';
+  teamTotals.forEach(({ ti, teamPlayers, teamPts, teamTarget, teamVs, teamName }) => {
+    const vsColor  = teamVs >= 0 ? '#27ae60' : '#c0392b';
+    const vsStr    = (teamVs >= 0 ? '+' : '') + teamVs;
+    const isWinner = teamVs === maxVs;
+    const cardBg     = isWinner ? '#fffbe6' : 'var(--surf2)';
+    const cardBorder = isWinner ? '2px solid var(--gold)' : '2px solid transparent';
+    const headerClr  = isWinner ? 'var(--gold)' : 'var(--g800)';
+    const trophy     = isWinner ? (isTied ? '🤝 ' : '🏆 ') : '';
+    html += `<div style="background:${cardBg};border-radius:8px;padding:12px 14px;margin-bottom:8px;border:${cardBorder};${isWinner?'box-shadow:0 2px 12px rgba(201,162,39,.25);':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;${isWinner?'background:var(--g800);border-radius:6px;padding:6px 10px;margin:-4px -4px 10px -4px;':''}">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;color:${headerClr};">${trophy}${esc(teamName)}${isWinner&&isTied?' (TIE)':isWinner?' — WINNER':''}</div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:${isWinner?'rgba(255,255,255,.6)':'var(--muted)'};font-weight:600;">TOTAL</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);line-height:1;">${teamPts}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:${isWinner?'rgba(255,255,255,.6)':'var(--muted)'};font-weight:600;">QUOTA</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:${isWinner?'#fff':'var(--g800)'};line-height:1;">${teamTarget}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:${isWinner?'rgba(255,255,255,.6)':'var(--muted)'};font-weight:600;">+/−</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:${vsColor};line-height:1;">${vsStr}</div>
+          </div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="border-bottom:1px solid var(--surf3);">
+          <th style="text-align:left;padding:3px 4px;color:var(--muted);font-weight:600;font-size:11px;">PLAYER</th>
+          <th style="text-align:center;padding:3px 4px;color:var(--muted);font-weight:600;font-size:11px;">ROLE</th>
+          <th style="text-align:center;padding:3px 4px;color:var(--muted);font-weight:600;font-size:11px;">CH</th>
+          <th style="text-align:center;padding:3px 4px;color:var(--muted);font-weight:600;font-size:11px;">PTS</th>
+          <th style="text-align:center;padding:3px 4px;color:var(--muted);font-weight:600;font-size:11px;">QUOTA</th>
+          <th style="text-align:center;padding:3px 4px;color:var(--muted);font-weight:600;font-size:11px;">+/−</th>
+        </tr></thead>
+        <tbody>
+          ${teamPlayers.map(p => {
+            const role = g.AsIds.includes(p.id) ? 'A' : 'B';
+            const vs   = p.totalGross ? p.totalPts - p.ptTarget : null;
+            const vsS  = vs !== null ? (vs >= 0 ? '+' : '') + vs : '—';
+            const vsC  = vs === null ? 'var(--muted)' : vs >= 0 ? '#27ae60' : '#c0392b';
+            return `<tr>
+              <td style="padding:4px;font-weight:600;">${esc(p.name)}</td>
+              <td style="padding:4px;text-align:center;"><span class="li-badge ${role==='A'?'green':'blue'}" style="font-size:10px;">${role}</span></td>
+              <td style="padding:4px;text-align:center;color:var(--muted);">${p.courseHcp}</td>
+              <td style="padding:4px;text-align:center;font-weight:700;color:var(--gold);">${p.totalPts}</td>
+              <td style="padding:4px;text-align:center;">${p.ptTarget}</td>
+              <td style="padding:4px;text-align:center;font-weight:600;color:${vsC};">${vsS}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  });
+  return html;
+}
+
+function renderResultsView() {
+  const g      = S.activeGame;
+  const r      = g.results;
+  const course = courseById(g.courseId);
+  if (!r || !course) return;
+
+  const is9hole      = g.activeHoleCount ? g.activeHoleCount === 9 : course.nineHole === true;
+  const activeHoles  = g.nineSide === 'all' ? course.holes
+    : g.nineSide === 'back' ? course.holes.slice(9,18)
+    : g.nineSide === 'front' ? course.holes.slice(0,9)
+    : course.holes; // dedicated 9-hole course
+  const halfStroke   = S.skins.halfStroke === true;
+  const strokeOffBest = S.skins.strokeOffBest === true;
+
+  const parts = [renderPointsLeaderboard(r), renderTeamResults(r, g)];
+  let html = parts.join('');
+
+  // ═══ SECTION 1: Points Leaderboard ═══
+
+  // ═══ SECTION 3: Score Card ═══
+  html += '<div class="section-label" style="margin-top:4px;">Score Card</div>';
+
+  const grossWinIds = r.grossSkins.map(w => w ? w.id : null);
+  const netWinIds   = r.netSkins.map(w => w ? w.id : null);
+
+  html += `<div style="overflow-x:auto;">
+  <table style="border-collapse:collapse;font-size:11px;width:100%;min-width:300px;">
+    <thead>
+      <tr style="background:var(--g800);">
+        <th style="color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:11px;padding:5px 6px;text-align:left;white-space:nowrap;">Player</th>
+        ${activeHoles.map(h=>`<th style="color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:11px;padding:5px 3px;text-align:center;">${h.num}</th>`).join('')}
+        <th style="color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:11px;padding:5px 4px;text-align:center;">PTS</th>
+      </tr>
+      <tr style="background:var(--g700);">
+        <th style="color:rgba(255,255,255,.5);font-size:10px;padding:3px 6px;text-align:left;">Par</th>
+        ${activeHoles.map(h=>`<th style="color:rgba(255,255,255,.5);font-size:10px;padding:3px 3px;text-align:center;">${h.par}</th>`).join('')}
+        <th style="color:rgba(255,255,255,.5);font-size:10px;padding:3px 4px;text-align:center;">${activeHoles.reduce((a,h)=>a+h.par,0)}</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${r.playerData.map((p, pi) => {
+        const rowBg = pi % 2 === 0 ? '#fff' : 'var(--surf2)';
+        const cells = activeHoles.map((h, hi) => {
+          const hd    = p.holeData[hi];
+          const gross = hd ? hd.gross : 0;
+          if (!gross) return `<td style="text-align:center;padding:4px 3px;background:${rowBg};color:var(--muted);">—</td>`;
+          const isGrossWin = grossWinIds[hi] === p.id;
+          const isNetWin   = netWinIds[hi]   === p.id;
+          let bg = rowBg;
+          if (isGrossWin) bg = '#d4edda';
+          else if (isNetWin) bg = '#fde8e8';
+          const fw     = (isGrossWin || isNetWin) ? '700' : '400';
+          const netDot = (isNetWin && !isGrossWin) ? `<span style="font-size:8px;color:#c0392b;">●</span>` : '';
+          return `<td style="text-align:center;padding:4px 3px;background:${bg};font-weight:${fw};white-space:nowrap;">${gross}${netDot}</td>`;
+        }).join('');
+        return `<tr>
+          <td style="padding:4px 6px;font-weight:600;white-space:nowrap;background:${rowBg};font-size:12px;">${esc(p.name)}</td>
+          ${cells}
+          <td style="text-align:center;padding:4px 4px;background:${rowBg};font-weight:700;color:var(--gold);">${p.totalPts}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>`;
+
+  // Legend
+  html += `<div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);">
+    <span><span style="display:inline-block;width:12px;height:12px;background:#d4edda;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>Gross skin</span>
+    <span><span style="display:inline-block;width:12px;height:12px;background:#fde8e8;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>Net skin ●</span>
+    ${halfStroke ? '<span>½-stroke applied</span>' : ''}
+    ${strokeOffBest ? '<span>Stroke off best</span>' : ''}
+  </div>`;
+
+  // ═══ SECTION 4: Skins Tally — combined based on settings ═══
+  // Use gross tally, net tally, or combined depending on what's active
+  const useNetSkins = S.skins.hcpAdj > 0 || S.skins.halfStroke || S.skins.strokeOffBest;
+  // Build a combined tally: gross skins + net skins (deduplicated per hole — one skin per hole)
+  // If a player wins both gross and net on same hole, count once
+  const combinedTally = {};
+  g.players.forEach(p => { combinedTally[p.id] = 0; });
+  activeHoles.forEach((h, i) => {
+    const gw = r.grossSkins[i];
+    const nw = r.netSkins[i];
+    if (gw) combinedTally[gw.id]++;
+    if (nw && (!gw || nw.id !== gw.id)) combinedTally[nw.id]++;
+  });
+
+  const skinWinners = Object.entries(combinedTally)
+    .filter(([,v]) => v > 0)
+    .sort((a,b) => b[1] - a[1]);
+
+  if (skinWinners.length) {
+    html += '<div class="section-label" style="margin-top:12px;">Skins</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    skinWinners.forEach(([pid, cnt]) => {
+      const p = g.players.find(x => x.id === pid);
+      html += `<div style="background:var(--g800);color:#fff;border-radius:8px;padding:8px 14px;text-align:center;">
+        <div style="font-weight:700;font-size:13px;">${p?.name}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);line-height:1;">${cnt}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.6);">skin${cnt>1?'s':''}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  const resultsBodyEl = document.getElementById('resultsBody'); if (resultsBodyEl) resultsBodyEl.innerHTML = html;
+}
+
+async function bulkRefreshGhin() {
+  appLog('GHIN refresh started (manual)');
+  if (!S.config.ghinProxyUrl) return toast('No GHIN proxy URL in Settings');
+  const withGhin = S.players.filter(p => p.ghin);
+  if (!withGhin.length) return toast('No players have a GHIN number');
+
+  const statusEl = document.getElementById('bulkGhinStatus');
+  statusEl.style.display = '';
+  statusEl.innerHTML = `<span style="color:var(--muted)">Fetching ${withGhin.length} indexes…</span>`;
+
+  const results = await ghinFetch(S.config.ghinProxyUrl, withGhin);
+  let updated = 0, failed = 0;
+  results.forEach(res => {
+    const player = S.players.find(p => String(p.ghin) === String(res.ghin));
+    if (!player) return;
+    if (res.handicap_index != null) { player.hcp = res.handicap_index; updated++; }
+    else { failed++; }
+  });
+  scheduleWrite();
+  const msg = `Updated ${updated} index${updated!==1?'es':''}${failed?`, ${failed} failed`:''}`;
+  statusEl.innerHTML = results.length
+    ? `<span style="color:#27ae60">✓ ${msg}</span>`
+    : `<span style="color:var(--red)">✗ Fetch failed</span>`;
+  toast(results.length ? msg : 'Bulk refresh failed');
+  renderPlayers();
+}
+
+async function refreshSelectedIndexes() {
+  if (!S.config.ghinProxyUrl) return toast('No GHIN proxy URL in Settings');
+  const selectedIds = [...document.querySelectorAll('#gsPlayerList input:checked')].map(x=>x.value);
+  if (!selectedIds.length) return toast('Select players first');
+
+  const withGhin = selectedIds
+    .map(id => playerById(id))
+    .filter(p => p && p.ghin);
+
+  if (!withGhin.length) return toast('Selected players have no GHIN numbers');
+
+  toast(`Refreshing ${withGhin.length} index${withGhin.length!==1?'es':''}…`, 3000);
+
+  const results = await ghinFetch(S.config.ghinProxyUrl, withGhin);
+  let updated = 0;
+  results.forEach(res => {
+    const player = S.players.find(p => String(p.ghin) === String(res.ghin));
+    if (player && res.handicap_index != null) { player.hcp = res.handicap_index; updated++; }
+  });
+  scheduleWrite();
+  // Update handicap labels in-place — don't re-render (would reset checkboxes)
+  selectedIds.forEach(id => {
+    const player = playerById(id);
+    if (!player) return;
+    const cb  = document.getElementById('gp_' + id);
+    if (!cb) return;
+    const lbl = cb.nextElementSibling;
+    if (lbl) {
+      const tag = lbl.querySelector('.hcp-tag');
+      if (tag) tag.textContent = fmtHcp(player.hcp);
+    }
+  });
+  toast(updated ? `✓ Updated ${updated} index${updated!==1?'es':''}` : 'No indexes updated');
+}
+
+/** Archive the active game to S.games history and clear activeGame. */
+function saveGame() {
+  const g = S.activeGame;
+  if (!g.results) return toast('Calculate results first');
+  // Archive only what viewGame needs — drop in-progress state to keep storage lean.
+  // scores/groups/phase/nineSide/pairMode are not used by history view since
+  // results (pre-computed Stableford + skins) has everything needed for display.
+  const saved = {
+    id:       g.id,
+    date:     g.date,
+    savedAt:  Date.now(),
+    courseId: g.courseId,
+    players:  g.players,
+    results:  g.results,
+  };
+  S.games.push(saved);
+  S.activeGame = null;
+  scheduleWrite();
+  toast('Game saved ✓');
+  showTab('history');
+}
+
+function clearActiveGame() {
+  confirmDo('Clear Active Game', 'This will discard the current game. Are you sure?', () => {
+    S.activeGame = null;
+    scheduleWrite();
+    renderGame();
+    toast('Active game cleared');
+  });
+}
+
+function confirmEndGame() {
+  confirmDo('End Game','Abandon this game? Results will be lost.', ()=>{
+    S.activeGame=null; scheduleWrite(); renderGame();
+  });
+}
+
+// ═══════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (!S.games.length) {
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>No saved games yet.</p></div>'; return;
+  }
+  const sorted = [...S.games].sort((a,b)=>b.date-a.date);
+  el.innerHTML = sorted.map(g=>{
+    const course = courseById(g.courseId);
+    const names  = g.players.map(p=>p.name.split(' ')[0]).join(', ');
+    return `<div class="list-item" style="cursor:pointer" data-action="viewGame" data-id="${g.id}">
+      <div>
+        <div class="li-main">${course?.name||'Unknown Course'}</div>
+        <div class="li-sub">${fmtDate(g.date)} &middot; ${g.players.length} players</div>
+        <div class="li-sub" style="font-size:11px;margin-top:2px;">${names}</div>
+      </div>
+      <div class="li-badge gold">View</div>
+    </div>`;
+  }).join('');
+}
+
+function viewGame(id) {
+  const g      = S.games.find(x=>x.id===id);
+  const course = courseById(g?.courseId);
+  if (!g) return;
+
+  const hmtEl=document.getElementById('histModalTitle'); if(hmtEl) hmtEl.textContent=(course?.name||'Game')+' · '+fmtDate(g.date);
+
+  let body = '';
+  if (g.results) {
+    const r      = g.results;
+    const sorted = [...r.playerData].sort((a,b)=>b.totalPts-a.totalPts);
+    body += '<div class="section-label">Stableford</div>';
+    body += '<table class="score-table"><thead><tr><th>#</th><th style="text-align:left">Player</th><th>Pts</th><th>Gross</th><th>Net</th></tr></thead><tbody>';
+    sorted.forEach((p,i)=>{
+      body += `<tr><td>${i===0?'🥇':i+1}</td><td style="text-align:left">${esc(p.name)}</td><td style="font-weight:700">${p.totalPts}</td><td>${p.totalGross||'—'}</td><td>${p.totalNet||'—'}</td></tr>`;
+    });
+    body += '</tbody></table>';
+
+    const gw = Object.entries(r.grossTally).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    const nw = Object.entries(r.netTally).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (gw.length) {
+      body += '<div class="section-label" style="margin-top:12px;">Gross Skins</div>';
+      body += gw.map(([pid,cnt])=>{
+        const p=g.players.find(x=>x.id===pid);
+        return `<div class="list-item"><div class="li-main">${p?.name||'?'}</div><div class="li-badge gold">${cnt} skin${cnt>1?'s':''}</div></div>`;
+      }).join('');
+    }
+    if (nw.length) {
+      body += '<div class="section-label" style="margin-top:12px;">Net Skins</div>';
+      body += nw.map(([pid,cnt])=>{
+        const p=g.players.find(x=>x.id===pid);
+        return `<div class="list-item"><div class="li-main">${p?.name||'?'}</div><div class="li-badge blue">${cnt} skin${cnt>1?'s':''}</div></div>`;
+      }).join('');
+    }
+  } else {
+    body = '<p style="color:var(--muted);font-size:13px;">No results recorded.</p>';
+  }
+
+  const _hmb=document.getElementById('histModalBody'); if(_hmb) _hmb.innerHTML=body;
+  // Show delete only in admin mode
+  const hdb = document.getElementById('histDeleteBtn');
+  if (hdb) hdb.style.display = isAdmin() ? '' : 'none';
+  document.getElementById('histDeleteBtn').onclick = ()=>{
+    confirmDo('Delete Game','Remove this game from history?',()=>{
+      S.games = S.games.filter(x=>x.id!==id);
+      closeModal('historyModal'); scheduleWrite(); renderHistory();
+    });
+  };
+  showModal('historyModal');
+}
+
+// ═══════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════
+function clearHomeCourse() {
+  COURSES.forEach(c => { c.homeCourse = false; });
+  saveCourses(); renderCourses(); renderSettings();
+}
+
+/** Render the settings card content including build info and toggles. */
+/** Update header version string and admin badge — called on init and renderAll. */
+function renderHeader() {
+  const hvEl = document.getElementById('header-version');
+  if (hvEl) hvEl.textContent = 'v' + APP_VERSION;
+  const badge = document.getElementById('admin-badge');
+  if (badge) badge.classList.toggle('visible', adminMode);
+}
+
+/** Toggle the advanced settings disclosure section. */
+function toggleAdvanced() {
+  const sec = document.getElementById('advancedSection');
+  const btn = document.getElementById('advancedToggleBtn');
+  if (!sec) return;
+  const open = sec.style.display === 'block';
+  sec.style.display = open ? 'none' : 'block';
+  if (btn) btn.textContent = open ? '⚙ ADVANCED ▾' : '⚙ ADVANCED ▴';
+}
+
+function renderSettings() {
+  const s = S.settings;
+  const btEl = document.getElementById('settingsBuildTime');
+  if (btEl) btEl.textContent = 'Build ' + BUILD_TIME;
+  // Show local courses override indicator
+  const lcEl = document.getElementById('localCoursesIndicator');
+  if (lcEl) lcEl.style.display = localStorage.getItem('fg_local_courses') ? '' : 'none';
+  const dblEagle = document.getElementById('ptsDblEagle'); if (dblEagle) dblEagle.value = s.ptsDblEagle;
+  const eagle    = document.getElementById('ptsEagle');    if (eagle)    eagle.value    = s.ptsEagle;
+  const birdie   = document.getElementById('ptsBirdie');   if (birdie)   birdie.value   = s.ptsBirdie;
+  const par      = document.getElementById('ptsPar');      if (par)      par.value      = s.ptsPar;
+  const bogey    = document.getElementById('ptsBogey');    if (bogey)    bogey.value    = s.ptsBogey;
+  const dbl      = document.getElementById('ptsDbl');      if (dbl)      dbl.value      = s.ptsDbl;
+  const cfgProxy = document.getElementById('cfgGhinProxy'); if (cfgProxy) cfgProxy.value = S.config.ghinProxyUrl||'';
+  const homeC = COURSES.find(c => c.homeCourse) || null;
+  const homeLbl = document.getElementById('cfgHomeCourse');
+  const homeBtn = document.getElementById('cfgHomeCourseBtn');
+  if (homeLbl) homeLbl.textContent = homeC ? homeC.name + (homeC.teeColor?' — '+homeC.teeColor:'') : 'Not set';
+  if (homeBtn) homeBtn.style.display = homeC ? '' : 'none';
+  const pcrChk = document.getElementById('settingPreCheckRegulars');
+  if (pcrChk) pcrChk.checked = S.gameSettings ? S.gameSettings.preCheckRegulars !== false : true;
+  const adminChk = document.getElementById('adminModeToggle');
+  if (adminChk) adminChk.checked = adminMode;
+  const adminDesc = document.getElementById('adminModeDesc');
+  if (adminDesc) adminDesc.textContent = adminMode ? 'On — delete actions visible' : 'Off — delete actions hidden';
+  renderHeader();
+  const statusEl = document.getElementById('cfgProxyStatus');
+  if (statusEl) {
+    if (S.config.ghinProxyUrl) {
+      statusEl.textContent = '✓ Saved: ' + S.config.ghinProxyUrl;
+    } else {
+      statusEl.innerHTML = '<span style="color:var(--red)">⚠ Not configured</span>';
+    }
+  }
+  // Skins
+  const skinsAdj = document.getElementById('skinsHcpAdj'); if (skinsAdj) skinsAdj.value = (S.skins && S.skins.hcpAdj!==undefined) ? S.skins.hcpAdj : 100;
+  // Pairing mode
+  const pm = S.pairMode || 'ab';
+  const pmAB  = document.getElementById('pairModeAB');     if (pmAB)  pmAB.classList.toggle('active', pm==='ab');
+  const pmRnd = document.getElementById('pairModeRandom'); if (pmRnd) pmRnd.classList.toggle('active', pm==='random');
+  const pmDesc = document.getElementById('pairModeDesc');  if (pmDesc) pmDesc.textContent = pm==='ab'
+    ? 'Players sorted by handicap, best half as A, weaker half as B. Each team is one A + one B.'
+    : 'Players randomly paired with no handicap tier — pure blind draw.';
+  const halfStroke = document.getElementById('skinsHalfStroke');     if (halfStroke) halfStroke.checked  = S.skins && S.skins.halfStroke===true;
+  const strokeBest = document.getElementById('skinsStrokeOffBest');  if (strokeBest) strokeBest.checked = S.skins && S.skins.strokeOffBest===true;
+  // History management — admin only
+  const capEl = document.getElementById('cfgHistoryCap');
+  if (capEl) capEl.value = S.settings.historyCap || 100;
+  const countEl = document.getElementById('historyCount');
+  if (countEl) {
+    const n = S.games.length, cap = S.settings.historyCap || 100;
+    countEl.textContent = `${n} game${n!==1?'s':''} stored${n>=cap?' ⚠️ at or over cap':''}`;
+    countEl.style.color = n >= cap ? 'var(--red)' : 'var(--muted)';
+  }
+}
+function saveHistoryCap(val) {
+  if (isNaN(val) || val < 10) return toast('Cap must be at least 10');
+  S.settings.historyCap = val; scheduleWrite(); toast('Cap saved');
+}
+function purgeGamesBefore() {
+  if (!isAdmin()) return;
+  const d = document.getElementById('cfgPurgeDate').value;
+  if (!d) return toast('Pick a date first');
+  const cutoff = new Date(d).getTime();
+  if (isNaN(cutoff)) return toast('Invalid date');
+  const before = S.games.length;
+  const toRemove = S.games.filter(g => g.date < cutoff).length;
+  if (!toRemove) return toast('No games before that date');
+  confirmDo('Confirm Delete',
+    `Delete ${toRemove} game${toRemove!==1?'s':''} before ${d}?`,
+    () => {
+      S.games = S.games.filter(g => g.date >= cutoff);
+      scheduleWrite(); renderSettings(); renderHistory();
+      toast(`Deleted ${toRemove} game${toRemove!==1?'s':''}`);
+    }
+  );
+}
+
+/** Auto-save Stableford point values when any input changes. */
+function saveSettings() {
+  S.settings = {
+    ptsDblEagle: parseInt(document.getElementById('ptsDblEagle').value)||0,
+    ptsEagle:    parseInt(document.getElementById('ptsEagle').value)||0,
+    ptsBirdie:   parseInt(document.getElementById('ptsBirdie').value)||0,
+    ptsPar:      parseInt(document.getElementById('ptsPar').value)||0,
+    ptsBogey:    parseInt(document.getElementById('ptsBogey').value)||0,
+    ptsDbl:      parseInt(document.getElementById('ptsDbl').value)||0,
+    historyCap:  S.settings.historyCap || 100,
+  };
+  scheduleWrite();
+  toast('Points saved ✓');
+}
+
+async function testProxy() {
+  const url = document.getElementById('cfgGhinProxy').value.trim();
+  if (!url) return toast('Enter proxy URL first');
+  toast('Testing…', 2000);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ghinNumbers: ['0000000'] })
+    });
+    const d = await r.json();
+    // Any JSON response (even error) means the Worker is reachable
+    toast('✓ Worker reachable (status ' + r.status + ')', 3000);
+  } catch(e) {
+    toast('✗ Save failed — check connection and try again.', 4000);
+  }
+}
+
+function autoSaveSkins() {
+  if (!S.skins) S.skins = {};
+  S.skins.hcpAdj       = parseInt(document.getElementById('skinsHcpAdj').value) || 100;
+  S.skins.halfStroke   = document.getElementById('skinsHalfStroke').checked;
+  S.skins.strokeOffBest = document.getElementById('skinsStrokeOffBest').checked;
+  scheduleWrite();
+  toast('Skins settings saved ✓');
+}
+
+function autoSaveGameSettings() {
+  if (!S.gameSettings) S.gameSettings = {};
+  S.gameSettings.preCheckRegulars = document.getElementById('settingPreCheckRegulars').checked;
+  scheduleWrite();
+  toast('Setting saved ✓');
+}
+
+function setPairMode(mode) {
+  const pmAB2=document.getElementById('pairModeAB'); if(pmAB2) pmAB2.classList.toggle('active', mode==='ab');
+  const pmRnd2=document.getElementById('pairModeRandom'); if(pmRnd2) pmRnd2.classList.toggle('active', mode==='random');
+  const pmdEl=document.getElementById('pairModeDesc');
+  if(pmdEl) pmdEl.textContent=mode==='ab'
+    ?'Players sorted by handicap, best half as A, weaker half as B. Each team is one A + one B.'
+    :'Players randomly paired with no handicap tier — pure blind draw.';
+  S.pairMode = mode;
+  scheduleWrite();
+  toast('Pairing mode saved ✓');
+}
+
+
+function saveConfig() {
+  const _pv = document.getElementById('cfgGhinProxy').value.trim();
+  if (_pv && !_pv.startsWith('https://')) return toast('Proxy URL must start with https://');
+  S.config.ghinProxyUrl = _pv;
+  scheduleWrite(); toast('Config saved ✓');
+}
+
+/** Export full S state as a downloadable JSON file for backup. */
+/** Prompt user to paste JSON and restore state from it. */
+let _pasteTarget = 'state';
+
+function setPasteTarget(t) {
+  _pasteTarget = t;
+  document.getElementById('pasteTargetState').style.borderColor   = t==='state'   ? 'var(--gold)' : '';
+  document.getElementById('pasteTargetState').style.color         = t==='state'   ? 'var(--gold)' : '';
+  document.getElementById('pasteTargetCourses').style.borderColor = t==='courses' ? 'var(--gold)' : '';
+  document.getElementById('pasteTargetCourses').style.color       = t==='courses' ? 'var(--gold)' : '';
+}
+
+function pasteJsonPrompt() {
+  _pasteTarget = 'state';
+  showModal('pasteJsonModal');
+  setPasteTarget('state');
+  const ta = document.getElementById('pasteJsonArea');
+  if (ta) { ta.value = ''; ta.focus(); }
+}
+
+function loadPastedJson() {
+  const ta = document.getElementById('pasteJsonArea');
+  if (!ta || !ta.value.trim()) return toast('Paste JSON first');
+  try {
+    const d = JSON.parse(ta.value.trim());
+    if (_pasteTarget === 'courses') {
+      // Courses JSON: { courses: [...], writeKey: "..." } or just [...]
+      const arr = Array.isArray(d) ? d : (d.courses || []);
+      if (!arr.length) return toast('No courses found in JSON');
+      COURSES = arr;
+      S.courses = arr;
+      window._localCoursesOverride = true;
+      localStorage.setItem('fg_local_courses', '1');
+      localStorage.setItem('fg_local_courses_data', JSON.stringify(arr));
+      saveLocal();
+      closeModal('pasteJsonModal');
+      renderCourses();
+      toast(`${arr.length} courses loaded ✓ (local only — not saved to Firebase)`);
+    } else {
+      // State JSON
+      S = normalizeState(d);
+      saveLocal();
+      closeModal('pasteJsonModal');
+      renderAll();
+      toast('State loaded ✓ (not saved to Firebase)');
+    }
+  } catch(e) { toast('Invalid JSON — check the pasted data and try again.'); }
+}
+
+
+// ═══════════════════════════════════════════════
+// EVENT DELEGATION
+// ═══════════════════════════════════════════════
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  const id     = el.dataset.id;
+
+  if (action==='editCourse')   openCourseModal(id);
+  if (action==='deleteCourse') confirmDo('Delete Course','Delete this course?',()=>{ COURSES=COURSES.filter(c=>c.id!==id); saveCourses(); renderCourses(); });
+  if (action==='editPlayer')   openPlayerModal(id);
+  if (action==='deletePlayer') confirmDo('Delete Player','Delete this player?',()=>{ S.players=S.players.filter(p=>p.id!==id); scheduleWrite(); renderPlayers(); });
+  if (action==='viewGame')     viewGame(id);
+});
+
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+
+function isActivelyScoring() {
+  return !!(S.activeGame && S.activeGame.phase === 'scores');
+}
+
+// ═══ Auto-update: check latestVersion in Firebase config ═══
+// If this client is newer: write new version to Firebase (auto-update others).
+// If this client is older: a newer version was deployed — reload unless
+// a game is actively being scored (scores entered or score phase active).
+let _lastUpdateCheck = 0;
+const UPDATE_CHECK_INTERVAL = 60000; // 60s cooldown between checks
+
+async function checkForUpdate() {
+  const now = Date.now();
+  if (now - _lastUpdateCheck < UPDATE_CHECK_INTERVAL) return;
+  _lastUpdateCheck = now;
+  try {
+    // Fetch only the config node — tiny payload, avoids full state read
+    const r = await fetchWithTimeout(FB_BASE + '/state/config.json', {}, 5000);
+    if (!r || !r.ok) return;
+    const config = await r.json();
+    const latest = config && config.latestVersion;
+    const latestNum = latest ? parseFloat(latest.replace(/(\d+)\.(\d+)/, (_,a,b)=>`${a}.${b.padStart(3,'0')}`)) : 0;
+    const ourNum    = parseFloat(APP_VERSION.replace(/(\d+)\.(\d+)/, (_,a,b)=>`${a}.${b.padStart(3,'0')}`));
+    if (ourNum > latestNum) {
+      // We are newer — write our version using the writeKey from the fetched config
+      const wk = config && config.writeKey;
+      if (wk) {
+        const payload = Object.assign({}, config, { latestVersion: APP_VERSION });
+        fetchWithTimeout(FB_BASE + '/state/config.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }, 5000).catch(() => {});
+        appLog('Auto-update: wrote latestVersion ' + APP_VERSION + ' to Firebase');
+      }
+    } else if (ourNum < latestNum) {
+      if (!isActivelyScoring()) {
+        toast('New version available — reloading…');
+        setTimeout(() => { window.location.href = window.location.pathname + '?v=' + latest; }, 1500);
+      }
+    }
+  } catch(e) {}
+}
+
+
+
+// ═══ Activity Log ═══
+// Shared with Extras Manager pattern — stores in S.config.log in Firebase.
+const LOG_MAX = 100;
+function appLog(msg) {
+  try {
+    const ts  = new Date().toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
+    const day = new Date().toLocaleDateString('en-US', {month:'short',day:'numeric'});
+    if (!S.config) S.config = {};
+    if (!Array.isArray(S.config.log)) S.config.log = [];
+    S.config.log.unshift(`${day} ${ts}  ${msg}`);
+    if (S.config.log.length > LOG_MAX) S.config.log.length = LOG_MAX;
+    // Log rides with the next scheduled write — no extra Firebase calls
+  } catch(e) {}
+}
+async function init() {
+  // Force reload if version mismatch
+  if (localStorage.getItem(VERSION_KEY) !== APP_VERSION) {
+    localStorage.setItem(VERSION_KEY, APP_VERSION);
+  }
+  loadLocal();
+  // Show choice screen on reopen — user must explicitly rejoin
+  if (S.activeGame) S.activeGame._scoring = false;
+  renderHeader();
+  // Replay any write that failed before app was closed
+  if (localStorage.getItem(LS_KEY + '_dirty') && S.config && S.config.writeKey) {
+    _dirty = true;
+    fbWrite(S);
+  }
+  loadCourses(); // loads from localStorage cache if offline
+  renderAll();   // render immediately from local data — don't wait for Firebase
+  showTab('game');
+  // Skip Firebase load if a local game is in progress — local state is authoritative
+  if (!S.activeGame) {
+    fbLoad().then(() => {
+      renderAll();
+      checkForUpdate();
+      const n = S.games.length, cap = S.settings.historyCap || 100;
+      if (n >= cap) toast(`⚠️ History at ${n} games — review cap in Settings`);
+    });
+  } else {
+    checkForUpdate();
+  }
+  // Always poll shared game so users can join in-progress games
+  fbLoadSharedGame();
+  window._sharedGameInterval = setInterval(fbLoadSharedGame, 15000);
+  // Reconnect when app comes back to foreground
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      // Skip Firebase load during active local game — local state is authoritative
+      if (!S.activeGame || !S.activeGame._scoring) fbLoad();
+      checkForUpdate();
+      if (!window._sharedGameInterval) window._sharedGameInterval = setInterval(fbLoadSharedGame, 15000);
+      // Flush any writes that failed while offline
+      if (_dirty && S.config.writeKey) fbWrite(S);
+    } else {
+      clearInterval(window._sharedGameInterval);
+      window._sharedGameInterval = null;
+    }
+  });
+}
+
+init();
+
+// Register service worker for offline asset caching
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
